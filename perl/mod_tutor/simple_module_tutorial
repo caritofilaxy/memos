@@ -1,0 +1,137 @@
+https://www.perlmonks.org/?node_id=102347
+
+So you find the Perl docs on modules a bit confusing? OK here is the world's simplest Perl module domonstrating all the salient features of Exporter and a script that uses this module. We also give a short rundown on @INC and finish with a note on using warnings and modules. Here is the module code.
+MyModule.pm
+---------------------------------------
+package MyModule;
+
+use strict;
+use Exporter;
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
+
+$VERSION     = 1.00;
+@ISA         = qw(Exporter);
+@EXPORT      = ();
+@EXPORT_OK   = qw(func1 func2);
+%EXPORT_TAGS = ( DEFAULT => [qw(&func1)],
+                 Both    => [qw(&func1 &func2)]);
+
+sub func1  { return reverse @_  }
+sub func2  { return map{ uc }@_ }
+
+1;
+-----------------------------------------
+
+First we get a namespace by declaring a package name. This helps ensure our module's functions and variables remain
+separate from any script that uses it.
+
+Use strict is a very good idea for modules to restrict the use of global variables. See use strict warnings and
+diagnostics or die for more details.
+
+We need to use the Exporter module to export our functions from the MyModule:: namespace into the main:: namespace to
+make them available to scripts that 'use' MyModule.
+
+We pacify strict with the use vars declaration of some variables. We can use an 'our' declaration in 5.6+
+
+We now set a $VERSION number and make Exporter part of MyModule using the @ISA. See perlboot for all the gory details on
+what @ISA is or just use it as shown.
+
+@EXPORT contains a list of functions that we export by default, in this case nothing. Generally the less you export by
+default using @EXPORT the better. This avoids accidentally clashing with functions defined in the script using the
+module. If a script wants a function let it ask.
+
+@EXPORT_OK contains a list of functions that we export on demand so we export &func1 &func2 only if specifically
+requested to. Use this in preference to just blindly exporting functions via @EXPORT. You can also export variables like
+$CONFIG provided they are globals not lexicals scoped with my (read declare them with our or use vars).
+
+%EXPORT_TAGS. For convenience we define two sets of export tags. The ':DEFAULT' tag exports only &func1; the ':Both' tag
+%exports both &func1 &func2. This hash stores labels pointing to array references. In this case the arrays are
+%anonymous.
+
+We need the 1; at the end because when a module loads Perl checks to see that the module returns a true value to ensure
+it loaded OK. You could put any true value at the end (see Code::Police) but 1 is the convention. 
+
+MyScript.pl (A simple script to use MyModule)
+
+---------------------------------------------------
+#!/usr/bin/perl -w
+
+use strict;
+
+# you may need to set @INC here (see below)
+
+my @list = qw (J u s t ~ A n o t h e r ~ P e r l ~ H a c k e r !);
+
+# case 1
+# use MyModule;
+# print func1(@list),"\n";
+# print func2(@list),"\n";
+
+# case 2
+# use MyModule qw(&func1);
+# print func1(@list),"\n";
+# print MyModule::func2(@list),"\n";
+
+# case 3
+# use MyModule qw(:DEFAULT);
+# print func1(@list),"\n";
+# print func2(@list),"\n";
+
+# case 4
+# use MyModule qw(:Both);
+# print func1(@list),"\n";
+# print func2(@list),"\n";
+
+---------------------------------------------------
+
+We use MyModule in MyScript.pl as shown. Uncomment the examples to see what happens. Just uncomment one at a time.
+
+Case 1: Because our module exports nothing by default we get errors as &funct1 and &funct2 have not been exported thus do not exist in the main:: namespace of the script.
+
+Case 2: This works OK. We ask our module to export the &func1 so we can use it. Although &func2 was not exported we reference it with its full package name so this works OK.
+
+Case 3: The ':DEFAULT' tag *should* export &func1 so you might expect the error here to concern a missing &func2. In fact Perl complains about &func1. Hmm, what is going on here. The DEFAULT tag name is special and is automatically set in our modules %EXPORT_TAGS hash like this DEFAULT => \@EXPORT. 
+
+Case 4: We specified the export of both our functions with the ':Both' thus this works. 
+
+A note on @INC
+
+When you issue a use MyModule; directive perl searchs the @INC array for a module with the correct name. @INC usually
+contains:
+
+/perl/lib 
+/perl/site/lib
+.
+
+The . directory (dot dir) is the current working directory. CORE modules are installed under perl/lib whereas non-CORE
+modules install under perl/site/lib. You can add directories to the module search path in @INC like this:
+
+BEGIN { push @INC, '/my/dir' }
+# or
+BEGIN { unshift @INC, '/my/dir' }
+# or
+use lib '/my/dir';
+[download]
+
+We need to use a BEGIN block to shift values into @INC at compile time as this is when perl checks for modules. If you wait until the script is comiled it is too late and perl will throw an exception saying it can't find MyModule in @INC... The difference between pushing a value and unshifting a value into @INC is that perl searches the @INC array for the module starting with the first dir in that array. Thus is you have a MyModule in /perl/lib/ and another in /perl/site/lib/ and another in ./ the one in /perl/lib will be found first and thus the one used. The use lib pragma effectively does the same as the BEGIN { unshift @INC, $dir } block - see perlman:lib:lib for full specifics. 
+
+What use Foo::Bar means
+
+use Foo::Bar does not mean look for a module called "Foo::Bar.pm" in the @INC directories. It means search @INC for a *subdir* called "Foo" and a *module* called "Bar.pm".
+
+Now once we have "use'd" a module its functions are available via the fully specified &PACKAGE::FUNCTION syntax. When we say &Foo::Bar::some_func we are refering to the *package name* not the (dir::)file name that we used in the use. This allows you to have many package names in one use'd file. In practice the names are usually the same.
+
+use Warnings;
+
+You should test your module with warnings enabled as this will pick up many subtle (and not so subtle :-) errors. You can activate warnings using the -w flag in the script you use to test the module. If you add use warnings to the module then your module will require Perl 5.6+ as this was not available before then. If you put $^W++ at the top of the module then you will globally enable warnings - this may break *other modules* a script may be using in addition to your module so is rather antisocial. An expert coder here called tye tests with warnings but does not include them directly in his/her modules.
+
+Hope this explains how it works.
+
+cheers
+
+tachyon
+
+Update
+
+Fixed a typo and added a few comments. Thanks to John M. Dlugosz. Rewrote and restyled tute for compatibility with versions of Perl < 5.6 thanks to crazyinsomniac. Also thanks to tye for reminding me that $^W++ is globally scoped and a bit antisocial for a module. 
+

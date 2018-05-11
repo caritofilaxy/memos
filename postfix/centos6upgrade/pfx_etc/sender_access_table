@@ -1,0 +1,2 @@
+/\.biz$/i	REJECT Please no mail from .biz domain
+/spam/i         REJECT If you have spam in local part or domain please keep away

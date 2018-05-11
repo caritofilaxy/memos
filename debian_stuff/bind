@@ -1,0 +1,5 @@
+#zone refresh from view
+rndc reload ${zone_name} IN ${view_name}
+
+#recursion
+If present and recursion is on, allow-recursion will dictate the list of clients that can use recursive services. 

@@ -1,0 +1,8 @@
+# custom message for recipient rejection
+echo -e "\/noreply@myhappydomain.com\/\tREJECT Please use info@myhappydomain.com instead" >> custom_replies_table
+
+smtpd_recipient_restrictions=
+    check_recipient_access pcre:$config_directory/custom_replies_table
+
+postmap custom_replies_table if not pcre
+

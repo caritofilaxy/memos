@@ -1,0 +1,225 @@
+#!/bin/sh
+#
+# add "kern.warning	/var/log/logfile" to get ipt logs in separate file
+
+IPTABLES=/sbin/iptables
+IP6TABLES=/sbin/ip6tables
+MODPROBE=/sbin/modprobe
+EXT_INTF=enp2s7
+INT_NET=192.168.0.0/24
+INT_INTF=enp2s5
+
+### flush existing rules and set chain policy setting to DROP
+echo "[+] Flushing existing iptables rules..."
+$IPTABLES -F
+$IPTABLES -F -t nat
+$IPTABLES -X
+$IPTABLES -P INPUT DROP
+$IPTABLES -P OUTPUT ACCEPT
+$IPTABLES -P FORWARD DROP
+
+### this policy does not handle IPv6 traffic except to drop it.
+#
+echo "[+] Disabling IPv6 traffic..."
+$IP6TABLES -P INPUT DROP
+$IP6TABLES -P OUTPUT DROP
+$IP6TABLES -P FORWARD DROP
+
+### load connection-tracking modules
+#
+/sbin/modprobe ip_tables
+/sbin/modprobe ip_conntrack
+/sbin/modprobe ip_conntrack_ftp
+/sbin/modprobe iptable_filter
+/sbin/modprobe iptable_mangle
+/sbin/modprobe iptable_nat
+/sbin/modprobe ipt_LOG
+/sbin/modprobe ipt_limit
+/sbin/modprobe ipt_state
+#/sbin/modprobe xt_hashlimit
+
+#########################
+###### INPUT chain ######
+#########################
+echo "[+] Setting up INPUT chain..."
+
+##### state tracking rules #####
+#$IPTABLES -A INPUT -m conntrack --ctstate INVALID -j LOG --log-level 4 --log-prefix "**DROP INVALID INPUT** " --log-ip-options --log-tcp-options
+$IPTABLES -A INPUT -m conntrack --ctstate INVALID -j DROP
+$IPTABLES -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+###########################################################################################################
+
+##### anti-spoofing rules #####
+#$IPTABLES -A INPUT -i $INT_INTF ! -s $INT_NET -j LOG --log-level 4 --log-prefix "**INPUT SPOOFED PKT** "
+$IPTABLES -A INPUT -i $INT_INTF ! -s $INT_NET -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 10.0.0.0/8 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 169.254.0.0/16 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 172.16.0.0/12 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 127.0.0.0/8 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 192.168.0.0/24 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 224.0.0.0/4 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -d 224.0.0.0/4 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 240.0.0.0/5 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -d 240.0.0.0/5 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -s 0.0.0.0/8 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -d 0.0.0.0/8 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -d 239.255.255.0/24 -j DROP
+$IPTABLES -A INPUT -i $EXT_INTF  -d 255.255.255.255 -j DROP
+###########################################################################################################
+
+##### drop fragmented packets #####
+#$IPTABLES -A INPUT -f -j LOG --log-level 4 --log-prefix "**INPUT FRAG** "
+$IPTABLES -A INPUT -f -j DROP
+###########################################################################################################
+
+##### drop SYN-FIN ####
+#$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN FIN,SYN -j LOG --log-level 4 --log-prefix "**INPUT SYN-FIN** "
+$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN FIN,SYN -j DROP
+###########################################################################################################
+
+##### drop SYN-RST #####
+#$IPTABLES -A INPUT -p tcp --tcp-flags SYN,RST SYN,RST -j LOG --log-level 4 --log-prefix "**INPUT SYN-RST** "
+$IPTABLES -A INPUT -p tcp --tcp-flags SYN,RST SYN,RST -j DROP
+###########################################################################################################
+
+##### drop x-mas ######
+#$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,PSH,URG -j LOG --log-level 4 --log-prefix "**INPUT X-MAS** "
+$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,PSH,URG -j DROP
+#$IPTABLES -A INPUT -p tcp --tcp-flags ALL ALL -j DROP
+###########################################################################################################
+
+##### drop nmap FIN scan #####
+#$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN -j LOG --log-level 4 --log-prefix "**INPUT FIN SCAN** "
+$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN -j DROP
+###########################################################################################################
+
+##### drop NULLs #####
+#$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j LOG --log-level 4 --log-prefix "**INPUT NULL** "
+$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j DROP
+#$IPTABLES -A INPUT -p tcp --tcp-flags ALL NONE -j DROP
+###########################################################################################################
+
+##### drop ALLs #####
+#$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,PSH,ACK,URG -j LOG --log-level 4 --log-prefix "**INPUT ALL FLAGS** "
+$IPTABLES -A INPUT -p tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,PSH,ACK,URG -j DROP
+###########################################################################################################
+
+##### Force SYN checks (drop not new syn) #####
+#$IPTABLES -A INPUT -p tcp ! --syn -m conntrack --ctstate NEW -j LOG --log-level 4 --log-prefix "**INPUT NOT NEW SYN** "
+$IPTABLES -A INPUT -p tcp ! --syn -m conntrack --ctstate NEW -j DROP
+###########################################################################################################
+
+##### no smurf #####
+$IPTABLES -A INPUT -p icmp -m icmp --icmp-type address-mask-request -j DROP
+$IPTABLES -A INPUT -p icmp -m icmp --icmp-type timestamp-request -j DROP
+#$IPTABLES -A INPUT -p icmp -m icmp --icmp-type echo-reply -m limit --limit 1/second -j ACCEPT
+$IPTABLES -A INPUT -p icmp -m limit --limit 1/second -j ACCEPT
+$IPTABLES -A INPUT -p icmp -j DROP
+###########################################################################################################
+
+
+###########################################################################################################
+
+##### ACCEPT rules #####
+$IPTABLES -A INPUT -i $EXT_INTF -s ${allowed_network} -j ACCEPT
+
+# allowed services
+$IPTABLES -A INPUT -p tcp --dport 22 -j ACCEPT
+$IPTABLES -A INPUT -p tcp --dport 80 -j ACCEPT
+
+# allow request from lan
+$IPTABLES -A INPUT -i $INT_INTF -j ACCEPT
+
+### make sure that loopback traffic is accepted #####
+$IPTABLES -A INPUT -i lo -j ACCEPT
+###########################################################################################################
+
+##########################
+###### OUTPUT chain ######
+##########################
+echo "[+] Setting up OUTPUT chain..."
+echo "Accept by default"
+
+###########################
+###### FORWARD chain ######
+###########################
+echo "[+] Setting up FORWARD chain..."
+
+##### state tracking rules #####
+#$IPTABLES -A FORWARD -m conntrack --ctstate INVALID -j LOG --log-level 4 --log-prefix "**FORWARD DROP INVALID** " --log-ip-options --log-tcp-options
+$IPTABLES -A FORWARD -m conntrack --ctstate INVALID -j DROP
+$IPTABLES -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+###########################################################################################################
+
+
+# ftp (all upper ports ???)
+FTP_LIST="ip addrs to allow ftp"; 
+
+for FTP_HOST in $FTP_LIST; do
+	$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF -d $FTP_HOST -p tcp --dport 21 -m conntrack --ctstate NEW -j ACCEPT
+	$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF -d $FTP_HOST -p tcp --sport 1024: --dport 1024: -m conntrack --ctstate NEW -j ACCEPT
+done
+
+
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 25 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 110 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 143 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 587 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 465 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 993 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 995 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 22 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 3389 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 4899 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 5190 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 3050 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 6667 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 8080 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 80 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 443 -m conntrack --ctstate NEW -j ACCEPT
+###
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 17992 -m conntrack --ctstate NEW -m comment --comment "videoconf" -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 17990 -m conntrack --ctstate NEW -m comment --comment "videoconf" -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p udp -m multiport --dports 50000:65535 -m comment --comment "videoconf" -j ACCEPT
+# increase udp timeout to like 3600 seconds
+# sysctl net.netfilter.nf_conntrack_udp_timeout_stream = 3600
+###
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p udp --dport 123 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p udp --dport 1194 -m conntrack --ctstate NEW -j ACCEPT
+
+$IPTABLES -A FORWARD -p icmp -j ACCEPT
+
+# skype (tcpdump catched)
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 12350 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p udp -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 40001 -m conntrack --ctstate NEW -j ACCEPT
+$IPTABLES -A FORWARD -i $INT_INTF -o $EXT_INTF  -p tcp --dport 40025 -m conntrack --ctstate NEW -j ACCEPT
+
+
+##### anti-spoofing rules #####
+#$IPTABLES -A FORWARD -i $INT_INTF ! -s $INT_NET -j LOG --log-level 4 --log-prefix "**FORWARD SPOOFED PKT** "
+$IPTABLES -A FORWARD -i $INT_INTF ! -s $INT_NET -j DROP
+###########################################################################################################
+
+
+### default LOG rule
+#$IPTABLES -A FORWARD ! -i lo -j LOG --log-level 4 --log-prefix "**FORWARD DROP** " --log-ip-options --log-tcp-options
+###########################################################################################################
+
+#######################
+###### NAT rules ######
+#######################
+#
+echo "[+] Setting up NAT rules..."
+$IPTABLES -t nat -A POSTROUTING -s $INT_NET -o $EXT_INTF -j MASQUERADE
+
+
+###########################################################################################################
+
+###### forwarding ######
+#
+echo "[+] Enabling IP forwarding..."
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+exit
+### EOF ###

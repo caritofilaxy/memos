@@ -1,0 +1,15 @@
+#example for mail.ru secured
+
+set imap_user = "user1_login"                       
+set imap_pass = "user1_password"                                    
+set smtp_url = "smtps://user1@mail.ru@smtp.mail.ru:465/"       
+set smtp_pass = "user1_password"                                    
+set from = "user1@mail.ru"                            
+set realname = "user1"                                  
+set folder = "imaps://imap.mail.ru:993"                     
+set spoolfile = "+INBOX"                                      
+set postponed = "+Drafts"                             
+set header_cache = ~/.mutt/user1_data/cache/headers            
+set message_cachedir = ~/.mutt/user1_data/cache/bodies         
+set record="+Sent"
+

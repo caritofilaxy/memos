@@ -1,0 +1,5 @@
+wxp
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList
+create DWORD same as login
+
+

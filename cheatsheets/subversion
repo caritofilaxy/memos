@@ -1,0 +1,29 @@
+svn             Command line program
+svnversion      Revision of working copy
+svnlook         Inspect repository
+svnadmin        Repository administration
+svndumpfilter   Filter repository stream
+mod_dav_svn     Apache module
+svnserve        SVN server (SVN protocol)
+svnsync         Mirror repository
+
+-dump 
+svnadmin dump "/path/to/repo" > repo.dump
+ex.: /usr/bin/svnadmin dump /opt/svn/REPONAME | gzip -9 > /backups/REPONAME-$(date +"%Y-%m-%d-%T").dump.gz
+ex.: /usr/bin/svnadmin dump /opt/svn/REPONAME > /backups/REPONAME-$(date +"%Y-%m-%d-%T").dump
+
+-restore 
+svnadmin create "/path/to/repo"
+svnadmin load "/path/to/repo" < repo.dump
+ex.: /usr/bin/svnadmin create "/opt/svn/REPONAME" && /usr/bin/svnadmin load "/opt/svn/REPONAME" < repo.dump
+
+-checkout
+svn co /path/to/repo
+ex.: svn co http://svn.example.org/repo
+
+-add
+svn add /working/copy/dir/*
+
+-commit 
+svn commit -m 'message' /working/copy/dir/
+

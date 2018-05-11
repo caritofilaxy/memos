@@ -1,0 +1,60 @@
+apt-get install isc-dhcp-server
+echo "INTERFACES="${listen iface}" >> /etc/default/isc-dhcp-server
+
+#################################################
+
+##### log 2 file not syslog
+
+log-facility local7 (dhcpd.conf);
+
+echo "local7.* /var/log/dhcp.log" >> /etc/rsyslog.d/dhcpd.conf
+echo "& ~" >> /etc/rsyslog.d/dhcpd.conf
+
+systemctl restart rsyslog
+systemctl restart isc-dhcp-server
+
+##### classless config
+option rfc3442-classless-static-routes code 121 = array of integer 8;
+option ms-classless-static-routes code 249 = array of integer 8;
+
+subnet 192.168.1.0 netmask 255.255.255.0 {
+	default-lease-time 600;
+        max-lease-time 600;
+
+	authoritative;
+
+	option domain-name "domain.com";
+
+#	option routers 192.168.12.254
+        option subnet-mask 255.255.255.0;
+        option broadcast-address 192.168.1.255;
+
+        option domain-name-servers 192.168.1.1, 192.168.1.2;
+
+        option netbios-node-type 8;
+        option netbios-name-servers 192.168.1.146;
+
+
+# routes for rfc3442 compliant clients 
+	option rfc3442-classless-static-routes  29, 80,249,183,240, 192,168,1,147, 
+                                                29, 80,79,248,104, 192,168,1,147, 
+                                                29, 81,211,127,104, 192,168,1,150,  
+                                                32, 192,168,2,125, 192,168,1,129,
+						0, 192,168,1,254;
+
+
+# windows clients
+        option ms-classless-static-routes       29, 80,249,183,240, 192,168,12,147,
+                                                29, 80,79,248,104, 192,168,12,147,
+                                                29, 81,211,127,104, 192,168,12,150,
+                                                32, 192,168,12,125, 192,168,12,129;
+						0, 192,168,1,254;
+
+	range 192.168.1.100 192.168.1.150;
+}
+
+
+# setting up default route via classless options some how leave windows clients without def route, use option routers instead.
+# linux clients dont receive def route via option routers if any of classless options defined, use ip r add/del default scripts in /etc/network/if-up.d if-down.d dirs.
+#
+#

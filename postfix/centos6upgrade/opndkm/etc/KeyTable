@@ -1,0 +1,1 @@
+default._domainkey.myhappydomain.com myhappydomain.com:default:/usr/local/opendkim/etc/keys/myhappydomain.com/default

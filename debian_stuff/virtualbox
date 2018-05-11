@@ -1,0 +1,14 @@
+echo -e "http://download.virtualbox.org/virtualbox/debian stretch contrib" >> /etc/apt/sources.list
+wgetttps://www.virtualbox.org/download/oracle_vbox.asc -O- | sudo apt-key add -
+apt-get update
+apt-get install linux-headers-$(uname -r) 
+apt-get install dkms ?
+apt-get install virtualbox
+/sbin/vboxconfig if needed
+
+host-only - Ctrl+W (File - Host network manager)
+
+disable dhcp server 
+File - Host network manager - dhcp - off checkbox
+VBoxManage dhcpserver remove --netname HostInterfaceNetworking-vboxnet0
+

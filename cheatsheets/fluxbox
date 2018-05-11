@@ -1,0 +1,8 @@
+customization
+
+backup of ~/.fluxbox/*
+
+change def menu file location in ~/.fluxbox/init:  session.menuFile: ~/.fluxbox/menu
+perl -i.bak -pe 's#menu#custommenu#' ~/.fluxbox/init
+
+now edit ~/.fluxbox/custommenu

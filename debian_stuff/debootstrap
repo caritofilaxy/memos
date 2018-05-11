@@ -1,0 +1,171 @@
+https://habrahabr.ru/post/147522/
+
+Ставим Ubuntu/Debian через debootstrap из другой Linux-системы
+Настройка Linux
+Tutorial
+imageПрошло почти три года с публикации последней и единственной статьи на хабре про это дело, и с тех пор некоторые вещи изменились. Хочу сразу сказать, что этот пост — упрощение и объединение двух замечательных вики-страниц написанных моим другом: раз и два. Если те страницы направлены на полное и подробное описание процесса установки, то я постараюсь максимально упростить и ускорить процесс установки, разбив его всего на три шага.
+
+Сам я считаю такой способ установки самым адекватным, т.к. он при всей своей простоте имеет большую гибкость, свежеустановленная система имеет самые новые версии пакетов, а всё, что нужно для полноценной работы системы можно установить до первой загрузки в неё. Под катом я приведу некоторый набор скриптов, 
+
+Во-первых, вам понадобится рабочая Linux-система, из которой мы будем устанавливать новую систему. Подойдет любой дистрибутив, как и установленный, так и запущенный с LiveCD.
+
+Шаг нулевой: Подготовка жесткого диска
+Для начала нужно разметить диск, как ваша душа пожелает. Хороших инструкций в интернете много, я обычно использую графическую утилиту GParted. Настоятельно советую выделить /home в отдельный раздел, при переустановке/смене дистрибутива это позволит избежать геморроя с переносом данных.
+
+Примонтируйте все разделы в какую-нибудь директорию (к примеру, /mnt/debian/). Далее даже вне скриптов вместо /mnt/debian я буду использовать $TARGET.
+
+## Предположим, что /dev/sda1 - root, а /dev/sda2 - home
+
+mkdir /mnt/debian
+mount /dev/sda1 /mnt/debian
+mkdir /mnt/debian/home
+mount /dev/sda2 /mnt/debian/home
+
+
+Шаг первый: Формирование базовой системы
+Для работы скрипта потребуется рабочий debootstrap, который есть в репозиториях всех deb-based дистрибутивов. Не бойтесь исправлять переменные и комментировать/раскомментировать строчки.
+
+#!/bin/bash
+
+ARCH=i386
+#ARCH=amd64 ##установить 64-битную систему из-под 32-битной не выйдет
+
+## пример для debian
+OS=debian
+DISTRO=wheezy
+#DISTRO=stable
+
+## ubuntu
+#OS=ubuntu
+#DISTRO=oneiric
+
+## место для установки системы
+TARGET=/mnt/debian
+
+## в качестве источника можно использовать примонтированный cdrom с системой:
+#debootstrap --include=sudo,nano,wget --arch $ARCH $DISTRO $TARGET file:/media/cdrom
+
+## а можно и зеркало в интернете
+debootstrap --include=sudo,nano,wget --arch $ARCH $DISTRO $TARGET http://$OS.mirror.vu.lt/$OS/
+
+## строчки ниже трогать не нужно, они монтируют системные директории в новый /
+mount -o bind /dev $TARGET/dev
+mount -o bind /sys $TARGET/sys
+
+
+Шаг второй: начальная конфигурация
+Настройте файл $TARGET/etc/fstab по шаблону:
+
+# /etc/fstab: static file system information.
+#
+# Use 'vol_id --uuid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system> <mount point>   <type>      <options>       <dump>  <pass>
+proc            /proc           proc        defaults        0       0    #обязательно
+/dev/sda1       /boot           ext2        defaults        0       0
+/dev/sda2       /               ext4        defaults        0       1
+/dev/sda3       /home           ext4        defaults        0       0
+/dev/sda4       none            swap        sw              0       0
+
+В рассмотренном выше примере он будет выглядеть так:
+
+# /etc/fstab: static file system information.
+# <file system> <mount point>   <type>      <options>       <dump>  <pass>
+proc            /proc           proc        defaults        0       0 
+/dev/sda1       /               ext4        defaults        0       1
+/dev/sda2       /home           ext4        defaults        0       0
+
+И файл $TARGET/etc/apt/sources.list. Его можно либо сгенерировать (генераторы для debian, ubuntu), либо воспользоваться шаблонами:
+
+Шаблон для Debian
+Шаблон для Ubuntu
+Шаг третий: всё остальное
+Для этого нужно запустить следующий скрипт в chroot. При условии, что имя скрипта — postinst.sh и лежит он в $TARGET/, запускать его нужно так:
+
+env LANG=C env HOME=/root chroot $TARGET /bin/bash /postinst.sh
+
+Сам скрипт:
+
+#!/bin/bash
+
+## обновление индекса репозитария
+apt-get update
+
+## настройка часовых поясов
+dpkg-reconfigure tzdata
+
+## монтирование файловых систем
+mount -t proc /proc /proc
+mount -a
+
+## участие в опросе популярности пакетов
+apt-get -y install popularity-contest
+
+## русский язык в консоли, русская локаль
+## при настройке console-cyrillic лучше выбрать, как шрифт, UniCyr, а на последний вопрос ответить «Да»
+
+apt-get -y install locales console-cyrillic
+dpkg-reconfigure locales
+dpkg-reconfigure console-cyrillic
+
+## установка hostname, обязательный шаг
+HOST='mysuperpc'
+
+echo "$HOST" > /etc/hostname
+echo -e "\n127.0.0.1 localhost $HOST" >> /etc/hosts
+
+## добавление пользователя, добавление его в sudo
+USER='mynotsuperuser'
+
+echo 'Добавление пользователя'
+
+adduser $USER
+usermod -a -G sudo $USER
+
+## установка пароля root
+
+echo 'Установка пароля root'
+passwd
+
+## установка ядра и загрузчика
+ARCH=i686 #варианты: i386, i486, i686, amd64
+
+## Debian:
+apt-get -y install linux-base linux-image-$ARCH linux-headers grub
+
+## Ubuntu:
+# apt-get -y install linux-image-generic linux-headers-generic
+
+## уставновка большинства прошивок
+apt-get -y install firmware-linux firmware-ralink firmware-realtek
+
+## установка рабочей среды
+
+## Debian:
+apt-get -y install xorg kde-full #KDE
+#apt-get -y install xorg kde # <= Lenny
+#apt-get -y install xorg gnome
+#apt-get -y install xorg xfce lxdm #XFCE
+#apt-get -y install xorg lxde lxdm #LXDE
+
+## Debian, аудиосистема
+apt-get -y install pulseaudio
+apt-get -y install alsa-base alsa-tools alsa-utils alsa-oss
+
+## Ubuntu: 
+#apt-get -y install xorg kubuntu-desktop #KDE
+#apt-get -y install xorg ubuntu-desktop #Unity
+#apt-get -y install xorg gnome-shell gnome-themes-standard gnome-tweak-tool #Gnome3
+#apt-get -y install xorg xubuntu-desktop #XFCE
+#apt-get -y install xorg lubuntu-desktop #LXDE 
+
+
+
+Если нужно поставить что-нибудь еще вручную до перезагрузки, то всегда можно войти в chroot-окружение командой:
+
+env LANG=C env HOME=/root chroot $TARGET /bin/bash
+
+Вот и всё. Полный набор скриптов для полуавтоматической установки я выложил на github, так что не стесняйтесь оформлять предложения и улучшения в виде pull-request'ов.
+

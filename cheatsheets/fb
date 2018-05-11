@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html id="XenForo" lang="en-US" dir="LTR" class="Public NoJs LoggedOut Sidebar Responsive" xmlns:fb="http://www.facebook.com/2008/fbml">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="https://www.howtoforge.com" />
+<script>
+			var _b = document.getElementsByTagName('base')[0], _bH = "https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/";
+			if (_b && _b.href != _bH) _b.href = _bH;
+		</script>
+<title>Perfect Fluxbox Desktop on Kali Linux</title>
+<meta name="keywords" content="desktop,linux" />
+<meta name="description" content="For my job, I need a portable Linux environment to run tests, so I often find myself using Kali Linux from a low resourced virtual machine, or booted ... " />
+<meta name="og:title" content="Perfect Fluxbox Desktop on Kali Linux">
+<meta name="og:description" content="For my job, I need a portable Linux environment to run tests, so I often find myself using Kali Linux from a low resourced virtual machine, or booted ... ">
+<meta name="og:site_name" content="Howtoforge">
+<meta name="og:type" content="article">
+<meta property="og:image" content="https://www.howtoforge.com/images/teaser/linux.gif">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="howtoforgecom">
+<meta name="twitter:creator" content="howtoforgecom">
+<meta name="twitter:title" content="Perfect Fluxbox Desktop on Kali Linux">
+<meta name="twitter:description" content="For my job, I need a portable Linux environment to run tests, so I often find myself using Kali Linux from a low resourced virtual machine, or booted ... ">
+<link rel="alternate" href="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/" hreflang="en" />
+<link rel="canonical" href="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/" />
+<link rel="amphtml" href="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/amp/" />
+<noscript><style>.JsOnly, .jsOnly { display: none !important; }</style></noscript>
+<link rel="stylesheet" href="/community/styles/executive/xenfocus/icons/css/font-awesome.min.css" />
+<link href='//fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css' />
+
+<link rel="stylesheet" href="/community/css.php?css=xenforo,form,public&amp;style=3&amp;dir=LTR&amp;d=1420029973" />
+<link rel="stylesheet" href="/community/css.php?css=bb_code,bbm_buttons,facebook,google,login_bar,node_category,node_forum,node_list,profile_post_list_simple,sidebar_share_page,twitter,wf_default&amp;style=3&amp;dir=LTR&amp;d=1420029973" />
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script>if (!window.jQuery) { document.write('<scr'+'ipt type="text/javascript" src="/js/jquery/jquery-1.11.3.min.js"><\/scr'+'ipt>'); }</script>
+<script src="/community/js/xenforo/xenforo.js?_v=303ae0ca"></script>
+<script src="/community/js/bbm/zloader.js?_v=303ae0ca"></script>
+<link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
+<script type="text/javascript" src="/js/fancybox/jquery.mousewheel-3.0.4.pack.js"></script>
+<script type="text/javascript" src="/js/fancybox/jquery.fancybox-1.3.4.pack.js"></script>
+<link rel="stylesheet" type="text/css" href="/js/fancybox/jquery.fancybox-1.3.4.css" media="screen" />
+<link href="/themes/howtoforge/templates/style.css" rel="stylesheet">
+<link rel="alternate" type="application/rss+xml" title="RSS-Feed für Howtoforge" href="/feed.rss" />
+<script src="/js/tinymce_4.1.7/tinymce.min.js"></script>
+<script type='text/javascript' src='https://partner.googleadservices.com/gampad/google_service.js'>
+</script>
+<script type='text/javascript'>
+GS_googleAddAdSenseService("ca-pub-3043223216276099");
+GS_googleEnableAllServices();
+</script>
+<script language="JavaScript">
+GA_googleAddAttr("Category", "Desktop");
+GA_googleAddAttr("Category", "Linux");
+</script>
+<script type='text/javascript'>
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_article_leaderboard_a_728x90");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_article_rectangle_a_300x250");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_article_rectangle_b_300x250");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_article_halfpage_a_300x600");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_article_leaderboard_b_728x90");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_article_halfpage_b_300x600");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_textlink_a_600x50");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_textlink_b_600x50");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_textlink_c_600x50");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_textlink_d_600x50");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_list_sidebar_top");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_list_content_middle");
+GA_googleAddSlot("ca-pub-3043223216276099", "howtoforge_com_list_bottom");
+</script>
+<script type='text/javascript'>
+GA_googleFetchAds();
+</script>
+
+<script type="text/javascript">
+    window.cookieconsent_options = {"message":"This website uses cookies to ensure you get the best experience on our website","dismiss":"Got it!","learnMore":"More info","link":"https://www.howtoforge.com/community/help/cookies","theme":"dark-bottom"};
+</script>
+<script type="text/javascript" src="/js/cookieconsent.latest.min.js"></script>
+
+</head>
+<body>
+<div id="loginBar">
+<div class="pageWidth">
+<div class="pageContent">
+<h3 id="loginBarHandle">
+<label for="LoginControl"><a href="/community/login/" class="concealed noOutline">Log in or Sign up</a></label>
+</h3>
+<span class="helper"></span>
+</div>
+</div>
+</div>
+<header>
+<div id="header">
+<div id="logoBlock">
+<div class="pageWidth">
+<div class="pageContent">
+<div id="logo"><a href="/">
+<span></span>
+<img src="/images/howtoforge_logo_trans.gif" alt="Howtoforge" style="margin-left:20px;" />
+</a></div>
+<span class="helper"></span>
+<div class="langSwitch">
+<b><img src="/images/gb.png" alt="HowtoForge - Linux Tutorials in English" /> English</b> | <a href="https://www.howtoforge.de/" title="HowtoForge.de - Linux Tutorials auf Deutsch"><img src="/images/de.png" alt="HowtoForge.de - Linux Tutorials auf Deutsch" /> Deutsch</a>
+</div>
+</div>
+</div>
+</div>
+<div id="navigation" class="pageWidth withSearch">
+<div class="pageContent">
+<nav>
+<div class="navTabs">
+<ul class="publicTabs">
+
+<li class="navTab forums selected">
+<a href="/" class="navLink">Tutorials</a>
+<div class="tabLinks forumsTabLinks">
+<ul class="secondaryContent blockLinksList">
+<li><a href="/search/">Tutorial search</a></li>
+</ul>
+</div>
+</li>
+<li class="navTab forums PopupClosed">
+<a href="/tutorials/" class="navLink">Tags</a>
+</li>
+<li class="navTab forums PopupClosed"><a href="/community/" class="navLink">Forums</a></li>
+<li class="navTab forums PopupClosed"><a href="/linux-commands/" class="navLink">Linux Commands</a></li>
+<li class="navTab forums PopupClosed"><a href="/subscription/" class="navLink">Subscribe</a></li>
+<li class="navTab forums PopupClosed"><a href="http://www.ispconfig.org" class="navLink">ISPConfig</a></li>
+<li class="navTab forums PopupClosed"><a href="http://www.lxer.com" class="navLink">News</a></li>
+</ul>
+</div>
+<span class="helper"></span>
+</nav>
+</div>
+</div>
+<div id="searchBar" class="pageWidth">
+<span id="QuickSearchPlaceholder" title=" Search..."> Search</span>
+<fieldset id="QuickSearch">
+<form action="/" method="post" class="formPopup">
+<div class="primaryControls">
+
+<input type="search" name="q" value="" class="textCtrl" placeholder="Search..." results="0" title="Enter your search and hit enter..." id="QuickSearchQuery" />
+
+</div>
+<input type="hidden" name="_xfToken" value="" />
+</form>
+</fieldset>
+</div>
+</div>
+</header>
+<div id="content" class="forum_list">
+<div class="pageWidth">
+<div class="pageContent">
+
+<div class="mainContainer">
+<div class="mainContent">
+
+<div class="breadBoxTop">
+<nav>
+<fieldset class="breadcrumb">
+<span class="crumbs">
+<span class="crust homeCrumb" itemscope="itemscope" itemtype="http://data-vocabulary.org/Breadcrumb">
+<a href="/" class="crumb" rel="up" itemprop="url"><span itemprop="title">Tutorials</span></a>
+<span class="arrow"><span></span></span>
+</span>
+<span class="crust selectedTabCrumb" itemscope="itemscope" itemtype="http://data-vocabulary.org/Breadcrumb">
+<a href="/tutorial/setup-fluxbox-desktop-on-kali-linux/" class="crumb" rel="up" itemprop="url"><span itemprop="title">Perfect Fluxbox Desktop on Kali Linux</span></a>
+<span class="arrow"><span>&gt;</span></span>
+</span>
+</span>
+</fieldset>
+</nav>
+</div>
+
+<div id="htfContentPage">
+<div class="bsa-apiads"><a href="https://ispprotect.com/?pk_campaign=htftxt" target="_blank" rel="nofollow">Scan your Web-Server for Malware with ISPProtect now. Get Free Trial.</a></div>
+<h1>Perfect Fluxbox Desktop on Kali Linux</h1>
+<div class="contributeEdit" style="float:right; width:450px; max-width:100%;">
+
+<div id="tocContainer">
+<h3>On this page</h3>
+<ol class="toc">
+<li><a href="#considerations">Considerations</a></li>
+<li><a href="#install-fluxbox">Install Fluxbox</a></li>
+<li><a href="#install-lightdm">Install LightDM</a></li>
+<li><a href="#some-additional-tools">Some Additional Tools</a></li>
+<li><a href="#switch-to-fluxbox">Switch to Fluxbox</a></li>
+<li><a href="#backup-the-configuration-files">Backup The Configuration Files</a></li>
+<li><a href="#configure-the-fluxbox-menu">Configure the Fluxbox Menu</a>
+<ol>
+<li><a href="#manual-configuration">Manual Configuration</a></li>
+<li><a href="#scripted-kali-menu">Scripted Kali Menu</a></li>
+<li><a href="#final-menu-files">Final Menu Files</a></li>
+</ol>
+</li>
+<li><a href="#fluxbox-key-bindings">Fluxbox Key Bindings</a></li>
+<li><a href="#startup">Startup</a></li>
+<li><a href="#style">Style</a></li>
+<li><a href="#wallpaper">Wallpaper</a></li>
+<li><a href="#workspaces">Workspaces</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ol>
+</div>
+</div>
+<p>This tutorial was tested on <a href="https://www.kali.org/kali-linux-releases/">Kali Linux 2017.1</a></p>
+<p>For my job, I need a portable Linux environment to run tests, so I often find myself using Kali Linux from a low resourced virtual machine, or booted from a flash drive. In this case scenario, having a lightweight desktop is as important as the tools themselves.</p>
+<h2 id="considerations">Considerations</h2>
+<p>It is assumed that:</p>
+<ul>
+<li>You have a Kali Linux environment installed (version 2017.1 is the tested version)</li>
+<li>You have a working Internet connection</li>
+<li>You are logged in as root (As this is the default setting for Kali)</li>
+</ul>
+<h2 id="install-fluxbox">Install Fluxbox</h2>
+<p class="command">apt-get update <br />apt-get install fluxbox</p>
+<h2 id="install-lightdm">Install LightDM</h2>
+<p>Installing lightDM not only sets a much lighter login screen, but also you would get the lock command for the Fluxbox keys section.</p>
+<p class="command">apt-get install lightdm <br />dpkg-reconfigure lightdm</p>
+<p>Set LightDM as the default desktop manager:</p>
+<p style="text-align: center;"><a class="fancybox" id="img-lightdm-dpkg" href="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/big/lightdm-dpkg.png"><img src="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/lightdm-dpkg.png" alt="Configure LightDM" width="326" height="212" /></a></p>
+<h2 id="some-additional-tools">Some Additional Tools</h2>
+<p>Fluxbox is a very lightweight window manager, we may make use of some additional tools to make a friendlier environment. These are just some recommendations:</p>
+<p class="command">apt-get install xfce4-screenshooter shutter gnome-do terminator</p>
+<ul>
+<li><a href="http://docs.xfce.org/apps/screenshooter/start">Xfce4-screenshooter</a> and <a href="https://launchpad.net/shutter">Shutter</a> are tools to take screenshots, I need them a lot to document my work. Shutter is more resource-consuming but yet I prefer it.</li>
+<li><a href="https://do.cooperteam.net/">Gnome-Do</a> is a program launcher, very handy, specially on Fluxbox, to run applications without touching the mouse.</li>
+<li><a href="https://gnometerminator.blogspot.com">Terminator</a> is a feature-rich terminal, awesome if you need terminal programs running together</li>
+</ul>
+<p>Note when first launching gnome-do set preference to "Hide window on first launch" so that you don't see it every time you log in. Then you run it with Windows key + space:</p>
+<p style="text-align: center;"><a class="fancybox" id="img-soft-gnomedo" href="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/big/soft-gnomedo.png"><img src="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/soft-gnomedo.png" alt="Kismet" width="394" height="219" /></a></p>
+<h2 id="switch-to-fluxbox">Switch to Fluxbox</h2>
+<p>At this moment you should logout and then login to fluxbox, for that, you should select the session on the login manager, for the case of having installed LightDM it will be located on the upper right corner:</p>
+<p style="text-align: center;"><a class="fancybox" id="img-lightdm-select" href="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/big/lightdm-select.png"><img src="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/lightdm-select.png" alt="Switch to Fluxbox" width="184" height="180" /></a></p>
+<p>After logging in the first time, the configuration files will be generated.</p>
+<p>Open a terminal to continue with the configuration. To do so, right-click the desktop and go to "Applications", "Terminal Emulators" and select a Terminal, or you can hit Alt+F2 and run the command for your favorite terminal.</p><div style="width:336px;float:left; margin: 10px 15px 10px 0px;background-color:white;">
+
+<script type='text/javascript'>
+GA_googleFillSlot('howtoforge_com_article_rectangle_a_300x250');
+</script>
+</div>
+<h2 id="backup-the-configuration-files">Backup The Configuration Files</h2>
+<p>Let's backup, as you should always do, the configuration files we are about to modify:</p>
+<p class="command">cp ~/.fluxbox/{,bkp.}menu <br />cp ~/.fluxbox/{,bkp.}init <br />cp ~/.fluxbox/{,bkp.}keys <br />cp ~/.fluxbox/{,bkp.}overlay <br />cp ~/.fluxbox/{,bkp.}startup</p>
+<h2 id="configure-the-fluxbox-menu">Configure the Fluxbox Menu</h2>
+<p>If this is your first time inside fluxbox, you will notice at a first glance that you have no menu to go, but it is there, you have to right click on the desktop to deploy it</p>
+<p>By now, you should have the default fluxbox menu, which won't be very useful, that's why this chapter...</p>
+<p>Let's change the default menu file location (<span class="system">~/.fluxbox/menu</span>), this is a good practice because, depending on the distribution, sometimes you may get this file overwritten:</p>
+<p class="command">sed -i 's/\/menu/\/custommenu/1' ~/.fluxbox/init</p>
+<p>You can manually edit the menu at any time editing file <span class="system">~/.fluxbox/custommenu</span>. Note that <span class="system">custommenu</span> is the name I've chosen for the file in the previous command</p>
+<p>The menu file itself is very self-explanatory so there's no need to be very detailed on the format. As a personal preference I change the title and put my favorite applications first, for instance:</p>
+<h3 id="manual-configuration">Manual Configuration</h3>
+<pre>[begin] (Kali Fluxbox!)
+[encoding] {UTF-8}
+	  [exec] (Screenshot) {xfce4-screenshooter -r}
+[separator]
+#Favorites
+	  [exec] (Terminator) {terminator}
+	  [exec] (Files) {nautilus --no-desktop}
+	  [exec] (Firefox) {firefox} &lt;&gt;
+	  [exec] (Chrome) {google-chrome} &lt;&gt;
+	  [exec] (Burp Suite) {burpsuite} &lt;&gt;
+	  [exec] (Metasploit) {gnome-terminal -e msfconsole} &lt;&gt;
+	  [exec] (Run...) {fbrun}
+[separator]
+#...</pre>
+<p>Note that the file has a tag formatted style, to mention about the previous file extract:</p>
+<ul>
+<li>[begin]: Starts the menu and specifies the menu title</li>
+<li>[separator]: An organizational bar to separate menus to your preference</li>
+<li>[exec]: Precedes each menu item to execute in the form [exec] (Display name) {command}</li>
+</ul>
+<p>Other possibilities are:</p>
+<ul>
+<li>[submenu]: A collapsible menu entry</li>
+<li>[include]: Includes a separate file</li>
+</ul>
+<p>I also like to have a poweroff, restart, suspend and lock, so I will add a submenu in the ending:</p>
+<pre>#...
+[separator]
+      [submenu] (Exit...)
+          [exec] (Power Off) {poweroff}
+          [exec] (Reboot) {reboot}
+          [exec] (Suspend) {systemctl suspend}
+          [exec] (Lock) {dm-tool lock}
+      [end]
+#...</pre>
+<p>Even though it is not the default setting for Kali Linux, if you use a non-root user, you may have to set sudoers file so that sudo does not prompt for a password on using these specific programs, and then call sudo in the menu command.</p>
+<h3 id="scripted-kali-menu">Scripted Kali Menu</h3>
+<p>Kali Linux comes with a very well organized and categorized menu, this won't be available by default in Fluxbox. So I wrote a bash script to collect the software and mimic Kali's menu for Gnome Shell in the fluxbox menu:</p>
+<pre>#!/bin/bash
+# Script to generate Fluxbox Menu for Kali based on XDG menu settings from the distribution
+
+#    This program is free software: you can redistribute it and/or modify it under the terms
+# of the GNU General Public License as published by the Free Software Foundation, either
+# version 3 of the License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+#    Please, see http://www.gnu.org/licenses/.
+
+kaliXDG="/usr/share/applications/kali-*.desktop"
+tmpMenu=$(mktemp /tmp/fbm.XXXXX) || { echo "Error creating temp"; exit 1; }
+fbMenu="$HOME/.fluxbox/kalimenu"
+
+for category in $(grep "^Categories" $kaliXDG | cut -d"=" -f2 | cut -d";" -f1 | sort | uniq | grep -vE "^[0-9][0-9]-[0-9][0-9]"); do
+	echo "[submenu] ($(echo $category | sed 's/-/ /g;s/\b\(.\)/\u\1/g'))" &gt;&gt; $tmpMenu
+	for app in $(grep "^Categories=${category:0:2}" $kaliXDG | cut -d":" -f1); do
+		appTerm=`grep "^Terminal" $app | cut -d"=" -f 2`
+		appCat=`grep "^Categories" $app | cut -d"=" -f 2 | cut -d";" -f 1`
+		appExec=`grep "^Exec" $app | cut -d"=" -f 2`
+		appName=`grep "^Name" $app | cut -d"=" -f 2`
+		if [ "$appTerm" == "false" ]; then
+			echo "   [exec] ($appName) {$appExec}" &gt;&gt; $tmpMenu
+		else
+			appExec=$(echo $appExec | cut -d'"' -f2 | cut -d";" -f1)
+			echo "   [exec] ($appName) {xterm -bg black -fa 'Monospace' -fs 11 -e '$appExec ; bash'}" &gt;&gt; $tmpMenu
+		fi
+	done
+	echo "[end]" &gt;&gt; $tmpMenu
+done
+
+cp $tmpMenu $fbMenu
+exit 0</pre>
+<p>Copy the text to an executable file and run it</p>
+<p>After running the script you will get a new file in <span class="system">~/.fluxbox/kalimenu</span></p>
+<p>I just included that generated file in my <span class="system">custommenu</span> file like this:</p>
+<pre>[separator]
+	[submenu] (Kali)
+	  [include] (~/.fluxbox/kalimenu)
+	[end]
+[separator]</pre>
+<h3 id="final-menu-files">Final Menu Files</h3>
+<p>After the previous changes, the configuration files ended like this:</p>
+<p><span class="system">~/.fluxbox/custommenu</span>:</p>
+<pre>[begin] (Kali Fluxbox!)
+[encoding] {UTF-8}
+      [exec] (Screenshot) {xfce4-screenshooter -r} 
+[separator]
+#Favorites
+      [exec] (Terminator) {terminator} 
+      [exec] (Files) {nautilus --no-desktop} 
+      [exec] (Firefox) {firefox} &lt;&gt;
+      [exec] (Chrome) {google-chrome} &lt;&gt;
+      [exec] (Burp Suite) {burpsuite} &lt;&gt;
+      [exec] (Metasploit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'msfconsole ; bash'} &lt;&gt;
+      [exec] (Run...) {fbrun} 
+
+[separator]
+    [submenu] (Kali)
+	[include] (~/.fluxbox/kalimenu)
+    [end]
+[separator]
+    [submenu] (fluxbox menu)
+        [config] (Configure)
+            [submenu] (System Styles) {Choose a style...}
+                [stylesdir] (/usr/share/fluxbox/styles)
+            [end]
+            [submenu] (User Styles) {Choose a style...}
+                [stylesdir] (~/.fluxbox/styles)
+            [end]
+            [workspaces] (Workspace List)
+            [submenu] (Tools)
+                [exec] (Window name) {xprop WM_CLASS|cut -d \" -f 2|xmessage -file - -center}
+            [end]
+            [commanddialog] (Fluxbox Command)
+            [reconfig] (Reload config)
+            [restart] (Restart)
+            [exec] (About) {(fluxbox -v; fluxbox -info | sed 1d) \
+            2&gt; /dev/null | xmessage -file - -center}
+            [separator]
+            [exit] (Exit)
+    [end]
+
+[separator]
+      [submenu] (Exit...)
+          [exec] (Power Off) {poweroff}
+          [exec] (Reboot) {reboot}
+          [exec] (Suspend) {systemctl suspend}
+          [exec] (Lock) {dm-tool lock}
+      [end]
+
+[end]</pre>
+<p><span class="system">~/.fluxbox/kalimenu</span>:</p>
+<pre>[submenu] (01 Info Gathering)
+   [exec] (0trace) {xterm -bg black -fa 'Monospace' -fs 11 -e '0trace.sh ; bash'}
+   [exec] (acccheck) {xterm -bg black -fa 'Monospace' -fs 11 -e 'acccheck ; bash'}
+   [exec] (automater) {xterm -bg black -fa 'Monospace' -fs 11 -e 'automater -h ; bash'}
+   [exec] (braa) {xterm -bg black -fa 'Monospace' -fs 11 -e 'braa -h ; bash'}
+   [exec] (casefile) {sh -c "casefile"}
+   [exec] (cdpsnarf) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cdpsnarf -h ; bash'}
+   [exec] (dmitry) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dmitry ; bash'}
+   [exec] (dnmap-client) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnmap_client ; bash'}
+   [exec] (dnmap-server) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnmap_server ; bash'}
+   [exec] (dnsenum) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnsenum -h ; bash'}
+   [exec] (dnsmap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnsmap ; bash'}
+   [exec] (dnsrecon) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnsrecon -h ; bash'}
+   [exec] (dnstracer) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnstracer ; bash'}
+   [exec] (dnswalk) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnswalk --help ; bash'}
+   [exec] (enum4linux) {xterm -bg black -fa 'Monospace' -fs 11 -e 'enum4linux ; bash'}
+   [exec] (fierce) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fierce -h ; bash'}
+   [exec] (fping) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fping -h ; bash'}
+   [exec] (fragroute) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fragroute -h ; bash'}
+   [exec] (fragrouter) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fragrouter -h ; bash'}
+   [exec] (ftest) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ftest ; bash'}
+   [exec] (hping3) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hping3 -h ; bash'}
+   [exec] (ike-scan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ike-scan -h ; bash'}
+   [exec] (intrace) {xterm -bg black -fa 'Monospace' -fs 11 -e 'intrace ; bash'}
+   [exec] (iputils-arping) {xterm -bg black -fa 'Monospace' -fs 11 -e 'arping ; bash'}
+   [exec] (irpas-ass) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ass -h ; bash'}
+   [exec] (irpass-cdp) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cdp ; bash'}
+   [exec] (lbd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'lbd ; bash'}
+   [exec] (maltegoce) {sh -c "maltegoce"}
+   [exec] (masscan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'masscan --help ; bash'}
+   [exec] (miranda) {xterm -bg black -fa 'Monospace' -fs 11 -e 'miranda -h ; bash'}
+   [exec] (nbtscan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'nbtscan -h ; bash'}
+   [exec] (ncat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ncat -h ; bash'}
+   [exec] (netdiscover) {xterm -bg black -fa 'Monospace' -fs 11 -e 'netdiscover -h ; bash'}
+   [exec] (netmask) {xterm -bg black -fa 'Monospace' -fs 11 -e 'netmask -h ; bash'}
+   [exec] (nmap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'nmap ; bash'}
+   [exec] (onesixtyone) {xterm -bg black -fa 'Monospace' -fs 11 -e 'onesixtyone ; bash'}
+   [exec] (p0f) {xterm -bg black -fa 'Monospace' -fs 11 -e 'p0f -h ; bash'}
+   [exec] (recon-ng) {xterm -bg black -fa 'Monospace' -fs 11 -e 'recon-ng ; bash'}
+   [exec] (smbmap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'smbmap -h ; bash'}
+   [exec] (smtp-user-enum) {xterm -bg black -fa 'Monospace' -fs 11 -e 'smtp-user-enum -h ; bash'}
+   [exec] (snmp-check) {xterm -bg black -fa 'Monospace' -fs 11 -e 'snmp-check -h ; bash'}
+   [exec] (sparta) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sparta ; bash'}
+   [exec] (sslcaudit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sslcaudit -h ; bash'}
+   [exec] (ssldump) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ssldump -h ; bash'}
+   [exec] (sslh) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sslh -h ; bash'}
+   [exec] (sslscan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sslscan ; bash'}
+   [exec] (sslyze) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sslyze -h ; bash'}
+   [exec] (swaks) {xterm -bg black -fa 'Monospace' -fs 11 -e 'swaks --help ; bash'}
+   [exec] (thcping6) {xterm -bg black -fa 'Monospace' -fs 11 -e 'thcping6 ; bash'}
+   [exec] (theharvester) {xterm -bg black -fa 'Monospace' -fs 11 -e 'theharvester ; bash'}
+   [exec] (tlssled) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tlssled ; bash'}
+   [exec] (twofi) {xterm -bg black -fa 'Monospace' -fs 11 -e 'twofi -h ; bash'}
+   [exec] (unicornscan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'us -h ; bash'}
+   [exec] (urlcrazy) {xterm -bg black -fa 'Monospace' -fs 11 -e 'urlcrazy -h ; bash'}
+   [exec] (wafw00f) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wafw00f -h ; bash'}
+   [exec] (wol-e) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wol-e -h ; bash'}
+   [exec] (xprobe2) {xterm -bg black -fa 'Monospace' -fs 11 -e 'xprobe2 -h ; bash'}
+   [exec] (zenmap) {sh -c "zenmap;${SHELL:-bash}"}
+[end]
+[submenu] (02 Vulnerability Analysis)
+   [exec] (bed) {xterm -bg black -fa 'Monospace' -fs 11 -e 'bed ; bash'}
+   [exec] (cisco-global-exploiter) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cge.pl ; bash'}
+   [exec] (cisco-ocs) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cisco-ocs ; bash'}
+   [exec] (copy-router-config) {xterm -bg black -fa 'Monospace' -fs 11 -e 'copy-router-config.pl ; bash'}
+   [exec] (dhcpig) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pig.py -h ; bash'}
+   [exec] (enumiax) {xterm -bg black -fa 'Monospace' -fs 11 -e 'enumiax -h ; bash'}
+   [exec] (golismero) {xterm -bg black -fa 'Monospace' -fs 11 -e 'golismero -h ; bash'}
+   [exec] (iaxflood) {xterm -bg black -fa 'Monospace' -fs 11 -e 'iaxflood ; bash'}
+   [exec] (inviteflood) {xterm -bg black -fa 'Monospace' -fs 11 -e 'inviteflood -h ; bash'}
+   [exec] (lynis) {xterm -bg black -fa 'Monospace' -fs 11 -e 'lynis -h ; bash'}
+   [exec] (merge-router-config) {xterm -bg black -fa 'Monospace' -fs 11 -e 'merge-router-config.pl ; bash'}
+   [exec] (nikto) {xterm -bg black -fa 'Monospace' -fs 11 -e 'nikto -h ; bash'}
+   [exec] (ohrwurm) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ohrwurm ; bash'}
+   [exec] (openvas initial setup) {xterm -bg black -fa 'Monospace' -fs 11 -e 'openvas-setup ; bash'}
+   [exec] (openvas start) {xterm -bg black -fa 'Monospace' -fs 11 -e 'openvas-start ; bash'}
+   [exec] (openvas stop) {xterm -bg black -fa 'Monospace' -fs 11 -e 'openvas-stop ; bash'}
+   [exec] (powerfuzzer) {sh -c "powerfuzzer;${SHELL:-bash}"}
+   [exec] (protos-sip) {xterm -bg black -fa 'Monospace' -fs 11 -e 'protos-sip -help ; bash'}
+   [exec] (rtpbreak) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rtpbreak -h ; bash'}
+   [exec] (rtpflood) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rtpflood ; bash'}
+   [exec] (rtpinsertsound) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rtpinsertsound -h ; bash'}
+   [exec] (rtpmixsound) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rtpmixsound -h ; bash'}
+   [exec] (sctpscan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sctpscan ; bash'}
+   [exec] (sfuzz) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sfuzz -h ; bash'}
+   [exec] (siege) {xterm -bg black -fa 'Monospace' -fs 11 -e 'siege -h ; bash'}
+   [exec] (siparmyknife) {xterm -bg black -fa 'Monospace' -fs 11 -e 'siparmyknife ; bash'}
+   [exec] (sipp) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sipp -h ; bash'}
+   [exec] (spike-generic_chunked) {xterm -bg black -fa 'Monospace' -fs 11 -e 'generic_chunked ; bash'}
+   [exec] (spike-generic_listen_tcp) {xterm -bg black -fa 'Monospace' -fs 11 -e 'generic_listen_tcp ; bash'}
+   [exec] (spike-generic_send_tcp) {xterm -bg black -fa 'Monospace' -fs 11 -e 'generic_send_tcp ; bash'}
+   [exec] (spike-generic_send_udp) {xterm -bg black -fa 'Monospace' -fs 11 -e 'generic_send_udp ; bash'}
+   [exec] (svcrack) {xterm -bg black -fa 'Monospace' -fs 11 -e 'svcrack -h ; bash'}
+   [exec] (svcrash) {xterm -bg black -fa 'Monospace' -fs 11 -e 'svcrash -h ; bash'}
+   [exec] (svmap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'svmap -h ; bash'}
+   [exec] (svreport) {xterm -bg black -fa 'Monospace' -fs 11 -e 'svreport -h ; bash'}
+   [exec] (svwar) {xterm -bg black -fa 'Monospace' -fs 11 -e 'svwar -h ; bash'}
+   [exec] (t50) {xterm -bg black -fa 'Monospace' -fs 11 -e 't50 --help ; bash'}
+   [exec] (thc-ssl-dos) {xterm -bg black -fa 'Monospace' -fs 11 -e 'thc-ssl-dos -h ; bash'}
+   [exec] (unix-privesc-check) {xterm -bg black -fa 'Monospace' -fs 11 -e 'unix-privesc-check ; bash'}
+   [exec] (voiphopper) {xterm -bg black -fa 'Monospace' -fs 11 -e 'voiphopper ; bash'}
+   [exec] (yersinia) {xterm -bg black -fa 'Monospace' -fs 11 -e 'yersinia --help ; bash'}
+[end]
+[submenu] (03 Webapp Analysis)
+   [exec] (apache-users) {xterm -bg black -fa 'Monospace' -fs 11 -e 'apache-users ; bash'}
+   [exec] (blindelephant) {xterm -bg black -fa 'Monospace' -fs 11 -e 'BlindElephant.py -h ; bash'}
+   [exec] (burpsuite) {sh -c "java -jar /usr/bin/burpsuite"}
+   [exec] (cadaver) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cadaver ; bash'}
+   [exec] (clusterd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'clusterd -h ; bash'}
+   [exec] (commix) {xterm -bg black -fa 'Monospace' -fs 11 -e 'commix ; bash'}
+   [exec] (cutycapt) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cutycapt --help ; bash'}
+   [exec] (davtest) {xterm -bg black -fa 'Monospace' -fs 11 -e 'davtest ; bash'}
+   [exec] (deblaze) {xterm -bg black -fa 'Monospace' -fs 11 -e 'deblaze.py -h ; bash'}
+   [exec] (dirb) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dirb ; bash'}
+   [exec] (dirbuster) {sh -c "dirbuster;${SHELL:-bash}"}
+   [exec] (fimap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fimap -h ; bash'}
+   [exec] (grabber) {xterm -bg black -fa 'Monospace' -fs 11 -e 'grabber -h ; bash'}
+   [exec] (httrack) {xterm -bg black -fa 'Monospace' -fs 11 -e 'httrack -h ; bash'}
+   [exec] (jboss-autopwn-linux) {xterm -bg black -fa 'Monospace' -fs 11 -e 'jboss-linux ; bash'}
+   [exec] (jboss-autopwn-win) {xterm -bg black -fa 'Monospace' -fs 11 -e 'jboss-win ; bash'}
+   [exec] (joomscan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'joomscan ; bash'}
+   [exec] (padbuster) {xterm -bg black -fa 'Monospace' -fs 11 -e 'padbuster ; bash'}
+   [exec] (paros) {sh -c "paros"}
+   [exec] (plecost) {xterm -bg black -fa 'Monospace' -fs 11 -e 'plecost -h ; bash'}
+   [exec] (proxystrike) {sh -c "proxystrike"}
+   [exec] (skipfish) {xterm -bg black -fa 'Monospace' -fs 11 -e 'skipfish -h ; bash'}
+   [exec] (sqlmap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sqlmap -h ; bash'}
+   [exec] (ua-tester) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ua-tester ; bash'}
+   [exec] (uniscan-gui) {sh -c "uniscan-gui"}
+   [exec] (vega) {sh -c "vega"}
+   [exec] (wapiti) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wapiti -h ; bash'}
+   [exec] (webscarab) {sh -c "webscarab"}
+   [exec] (wfuzz) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wfuzz ; bash'}
+   [exec] (whatweb) {xterm -bg black -fa 'Monospace' -fs 11 -e 'whatweb -h ; bash'}
+   [exec] (wpscan) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wpscan --help ; bash'}
+   [exec] (xsser) {xterm -bg black -fa 'Monospace' -fs 11 -e 'xsser -h ; bash'}
+   [exec] (owasp-zap) {sh -c "zaproxy"}
+[end]
+[submenu] (04 Database Assessment)
+   [exec] (bbqsql) {xterm -bg black -fa 'Monospace' -fs 11 -e 'bbqsql ; bash'}
+   [exec] (hexorbase) {sh -c "hexorbase"}
+   [exec] (mdb-sql) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mdb-sql -h ; bash'}
+   [exec] (oscanner) {xterm -bg black -fa 'Monospace' -fs 11 -e 'oscanner ; bash'}
+   [exec] (sidguesser) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sidguess ; bash'}
+   [exec] (sqldict) {sh -c "sqldict"}
+   [exec] (sqlninja) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sqlninja ; bash'}
+   [exec] (sqlsus) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sqlsus -h ; bash'}
+   [exec] (tnscmd10g) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tnscmd10g ; bash'}
+[end]
+[submenu] (05 Password Attacks)
+   [exec] (cachedump) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cachedump -h ; bash'}
+   [exec] (cewl) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cewl --help ; bash'}
+   [exec] (chntpw) {xterm -bg black -fa 'Monospace' -fs 11 -e 'chntpw -h ; bash'}
+   [exec] (cmospwd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cmospwd ; bash'}
+   [exec] (crunch) {xterm -bg black -fa 'Monospace' -fs 11 -e 'crunch ; bash'}
+   [exec] (fcrackzip) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fcrackzip --help ; bash'}
+   [exec] (findmyhash) {xterm -bg black -fa 'Monospace' -fs 11 -e 'findmyhash ; bash'}
+   [exec] (hashcat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hashcat --help ; bash'}
+   [exec] (hashid) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hashid -h ; bash'}
+   [exec] (hash-identifier) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hash-identifier ; bash'}
+   [exec] (hydra) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hydra -h ; bash'}
+   [exec] (john) {xterm -bg black -fa 'Monospace' -fs 11 -e 'john ; bash'}
+   [exec] (johnny) {sh -c "johnny;${SHELL:-bash}"}
+   [exec] (keimpx) {xterm -bg black -fa 'Monospace' -fs 11 -e 'keimpx -h ; bash'}
+   [exec] (lsadump) {xterm -bg black -fa 'Monospace' -fs 11 -e 'lsadump -h ; bash'}
+   [exec] (maskgen) {xterm -bg black -fa 'Monospace' -fs 11 -e 'maskgen -h ; bash'}
+   [exec] (medusa) {xterm -bg black -fa 'Monospace' -fs 11 -e 'medusa -h ; bash'}
+   [exec] (ncrack) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ncrack -h ; bash'}
+   [exec] (ophcrack-cli) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ophcrack-cli ; bash'}
+   [exec] (ophcrack) {sh -c "ophcrack"}
+   [exec] (patator) {xterm -bg black -fa 'Monospace' -fs 11 -e 'patator -h ; bash'}
+   [exec] (policygen) {xterm -bg black -fa 'Monospace' -fs 11 -e 'policygen -h ; bash'}
+   [exec] (pth-curl) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-curl -h ; bash'}
+   [exec] (pth-net) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-net help ; bash'}
+   [exec] (pth-openchangeclient) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-openchangeclient --help ; bash'}
+   [exec] (pth-rpcclient) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-rpcclient -h ; bash'}
+   [exec] (pth-smbclient) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-smbclient -h ; bash'}
+   [exec] (pth-smbget) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-smbget --help ; bash'}
+   [exec] (pth-sqsh) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-sqsh --help ; bash'}
+   [exec] (pth-winexe) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-winexe -h ; bash'}
+   [exec] (pth-wmic) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-wmic -h ; bash'}
+   [exec] (pth-wmis) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pth-wmis -h ; bash'}
+   [exec] (pwdump) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pwdump -h ; bash'}
+   [exec] (pyrit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pyrit -h ; bash'}
+   [exec] (rainbowcrack) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rcrack ; bash'}
+   [exec] (rcracki_mt) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rcracki_mt ; bash'}
+   [exec] (rsmangler) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rsmangler -h ; bash'}
+   [exec] (samdump2) {xterm -bg black -fa 'Monospace' -fs 11 -e 'samdump2 -h ; bash'}
+   [exec] (sipcrack) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sipcrack -h ; bash'}
+   [exec] (statsgen) {xterm -bg black -fa 'Monospace' -fs 11 -e 'statsgen -h ; bash'}
+   [exec] (sucrack) {xterm -bg black -fa 'Monospace' -fs 11 -e 'man sucrack ; bash'}
+   [exec] (thc-pptp-bruter) {xterm -bg black -fa 'Monospace' -fs 11 -e 'thc-pptp-bruter ; bash'}
+   [exec] (truecrack) {xterm -bg black -fa 'Monospace' -fs 11 -e 'truecrack -h ; bash'}
+   [exec] (wordlists) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cd /usr/share/wordlists &amp;&amp; ls -l ; bash'}
+[end]
+[submenu] (06 Wireless Attacks)
+   [exec] (aircrack-ng) {xterm -bg black -fa 'Monospace' -fs 11 -e 'aircrack-ng --help ; bash'}
+   [exec] (asleap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'asleap -h ; bash'}
+   [exec] (bluelog) {xterm -bg black -fa 'Monospace' -fs 11 -e 'bluelog -h ; bash'}
+   [exec] (blueranger) {xterm -bg black -fa 'Monospace' -fs 11 -e 'blueranger.sh ; bash'}
+   [exec] (bluesnarfer) {xterm -bg black -fa 'Monospace' -fs 11 -e 'bluesnarfer ; bash'}
+   [exec] (btscanner) {xterm -bg black -fa 'Monospace' -fs 11 -e 'btscanner -h ; bash'}
+   [exec] (bully) {xterm -bg black -fa 'Monospace' -fs 11 -e 'bully ; bash'}
+   [exec] (cisco-auditing-tool) {xterm -bg black -fa 'Monospace' -fs 11 -e 'CAT ; bash'}
+   [exec] (cisco-torch) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cisco-torch ; bash'}
+   [exec] (cowpatty) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cowpatty ; bash'}
+   [exec] (eapmd5pass) {xterm -bg black -fa 'Monospace' -fs 11 -e 'eapmd5pass -h ; bash'}
+   [exec] (fern wifi cracker) {sh -c "fern-wifi-cracker"}
+   [exec] (ghost phisher) {sh -c "ghost-phisher"}
+   [exec] (giskismet) {xterm -bg black -fa 'Monospace' -fs 11 -e 'giskismet -h ; bash'}
+   [exec] (hackrf_info) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hackrf_info -h ; bash'}
+   [exec] (mdk3) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mdk3 --help ; bash'}
+   [exec] (mfcuk) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mfcuk -h ; bash'}
+   [exec] (mfoc) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mfoc -h ; bash'}
+   [exec] (mfterm) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mfterm -h ; bash'}
+   [exec] (mifare-classic-format) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mifare-classic-format -h ; bash'}
+   [exec] (nfc-list) {xterm -bg black -fa 'Monospace' -fs 11 -e 'nfc-list -h ; bash'}
+   [exec] (nfc-mfclassic) {xterm -bg black -fa 'Monospace' -fs 11 -e 'nfc-mfclassic -h ; bash'}
+   [exec] (pixiewps) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pixiewps -h ; bash'}
+   [exec] (reaver) {xterm -bg black -fa 'Monospace' -fs 11 -e 'reaver -h ; bash'}
+   [exec] (redfang) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fang -h ; bash'}
+   [exec] (spooftooph) {xterm -bg black -fa 'Monospace' -fs 11 -e 'spooftooph -h ; bash'}
+   [exec] (wifiarp) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wifiarp -h ; bash'}
+   [exec] (wifidns) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wifidns -h ; bash'}
+   [exec] (wifi-honey) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wifi-honey -h ; bash'}
+   [exec] (wifiping) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wifiping -h ; bash'}
+   [exec] (wifitap) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wifitap -h ; bash'}
+   [exec] (wifite) {xterm -bg black -fa 'Monospace' -fs 11 -e 'wifite --help ; bash'}
+   [exec] (zbassocflood) {xterm -bg black -fa 'Monospace' -fs 11 -e 'zbassocflood -h ; bash'}
+   [exec] (zbdsniff) {xterm -bg black -fa 'Monospace' -fs 11 -e 'zbdsniff ; bash'}
+   [exec] (zbdump) {xterm -bg black -fa 'Monospace' -fs 11 -e 'zbdump -h ; bash'}
+   [exec] (zbfind) {sh -c "zbfind"}
+   [exec] (zbgoodfind) {xterm -bg black -fa 'Monospace' -fs 11 -e 'zbgoodfind -h ; bash'}
+   [exec] (zbreplay) {xterm -bg black -fa 'Monospace' -fs 11 -e 'zbreplay -h ; bash'}
+   [exec] (zbstumbler) {xterm -bg black -fa 'Monospace' -fs 11 -e 'zbstumbler -h ; bash'}
+[end]
+[submenu] (07 Reverseengineer)
+   [exec] (apktool) {xterm -bg black -fa 'Monospace' -fs 11 -e 'apktool ; bash'}
+   [exec] (clang) {xterm -bg black -fa 'Monospace' -fs 11 -e 'clang --help ; bash'}
+   [exec] (clang++) {xterm -bg black -fa 'Monospace' -fs 11 -e 'clang++ --help ; bash'}
+   [exec] (edb-debugger) {sh -c "edb;${SHELL:-bash}"}
+   [exec] (flasm) {xterm -bg black -fa 'Monospace' -fs 11 -e 'flasm ; bash'}
+   [exec] (jad) {xterm -bg black -fa 'Monospace' -fs 11 -e 'jad ; bash'}
+   [exec] (javasnoop) {sh -c "javasnoop"}
+   [exec] (NASM shell) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cd /usr/share/metasploit-framework/tools/exploit &amp;&amp; ./nasm_shell.rb ; bash'}
+   [exec] (ollydbg) {sh -c "ollydbg"}
+   [exec] (radare2) {xterm -bg black -fa 'Monospace' -fs 11 -e 'radare2 -h ; bash'}
+[end]
+[submenu] (08 Exploitation Tools)
+   [exec] (armitage) {sh -c "armitage;${SHELL:-bash}"}
+   [exec] (beef xss framework) {xterm -bg black -fa 'Monospace' -fs 11 -e 'beef-xss ; bash'}
+   [exec] (metasploit framework) {xterm -bg black -fa 'Monospace' -fs 11 -e 'service postgresql start &amp;&amp; msfdb init &amp;&amp; msfconsole ; bash'}
+   [exec] (msf payload creator) {xterm -bg black -fa 'Monospace' -fs 11 -e 'msfpc ; bash'}
+   [exec] (searchsploit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'searchsploit ; bash'}
+   [exec] (social engineering toolkit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'setoolkit ; bash'}
+   [exec] (termineter) {xterm -bg black -fa 'Monospace' -fs 11 -e 'termineter -h ; bash'}
+[end]
+[submenu] (09 Sniffing Spoofing)
+   [exec] (bdfproxy) {xterm -bg black -fa 'Monospace' -fs 11 -e 'bdfproxy ; bash'}
+   [exec] (darkstat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'darkstat ; bash'}
+   [exec] (dnschef) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dnschef -h ; bash'}
+   [exec] (dsniff) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dsniff -h ; bash'}
+   [exec] (ettercap-graphical) {sh -c "ettercap -G"}
+   [exec] (fiked) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fiked -h ; bash'}
+   [exec] (hamster) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hamster ; bash'}
+   [exec] (hexinject) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hexinject -h ; bash'}
+   [exec] (macchanger) {xterm -bg black -fa 'Monospace' -fs 11 -e 'macchanger -h ; bash'}
+   [exec] (mitmproxy) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mitmproxy -h ; bash'}
+   [exec] (netsniff-ng) {xterm -bg black -fa 'Monospace' -fs 11 -e 'netsniff-ng -h ; bash'}
+   [exec] (nfspy) {xterm -bg black -fa 'Monospace' -fs 11 -e 'nfspy -h ; bash'}
+   [exec] (rebind) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dns-rebind ; bash'}
+   [exec] (responder) {xterm -bg black -fa 'Monospace' -fs 11 -e 'responder -h ; bash'}
+   [exec] (sniffjoke) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sniffjoke --help ; bash'}
+   [exec] (sslsniff) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sslsniff ; bash'}
+   [exec] (sslsplit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sslsplit -h ; bash'}
+   [exec] (sslstrip) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sslstrip -h ; bash'}
+   [exec] (tcpflow) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tcpflow -h ; bash'}
+   [exec] (tcpreplay) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tcpreplay -h ; bash'}
+   [exec] (wireshark) {sh -c "wireshark"}
+[end]
+[submenu] (10 Maintaining Access)
+   [exec] (backdoor-factory) {xterm -bg black -fa 'Monospace' -fs 11 -e 'backdoor-factory -h ; bash'}
+   [exec] (cymothoa) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cymothoa -h ; bash'}
+   [exec] (dbd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dbd -h ; bash'}
+   [exec] (dns2tcpc) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dns2tcpc ; bash'}
+   [exec] (dns2tcpd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dns2tcpd ; bash'}
+   [exec] (exe2hex) {xterm -bg black -fa 'Monospace' -fs 11 -e 'exe2hex ; bash'}
+   [exec] (intersect) {xterm -bg black -fa 'Monospace' -fs 11 -e 'intersect ; bash'}
+   [exec] (iodine) {xterm -bg black -fa 'Monospace' -fs 11 -e 'iodine-client-start -h ; bash'}
+   [exec] (laudanum) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ls -l /usr/share/laudanum ; bash'}
+   [exec] (mimikatz) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cd /usr/share/mimikatz/ &amp;&amp; ls -l ; bash'}
+   [exec] (miredo) {xterm -bg black -fa 'Monospace' -fs 11 -e 'miredo -h ; bash'}
+   [exec] (nishang) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cd /usr/share/nishang &amp;&amp; ls -l ; bash'}
+   [exec] (powersploit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'cd /usr/share/powersploit/ &amp;&amp; ls -l ; bash'}
+   [exec] (proxychains) {xterm -bg black -fa 'Monospace' -fs 11 -e 'proxychains ; bash'}
+   [exec] (proxytunnel) {xterm -bg black -fa 'Monospace' -fs 11 -e 'proxytunnel -h ; bash'}
+   [exec] (ptunnel) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ptunnel -h ; bash'}
+   [exec] (pwnat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pwnat -h ; bash'}
+   [exec] (sbd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sbd -h ; bash'}
+   [exec] (stunnel4) {xterm -bg black -fa 'Monospace' -fs 11 -e 'stunnel4 -help ; bash'}
+   [exec] (u3-pwn) {xterm -bg black -fa 'Monospace' -fs 11 -e 'u3-pwn ; bash'}
+   [exec] (udptunnel) {xterm -bg black -fa 'Monospace' -fs 11 -e 'udptunnel -h ; bash'}
+   [exec] (webacoo) {xterm -bg black -fa 'Monospace' -fs 11 -e 'webacoo -h ; bash'}
+   [exec] (weevely) {xterm -bg black -fa 'Monospace' -fs 11 -e 'weevely ; bash'}
+[end]
+[submenu] (11 Forensics)
+   [exec] (affcat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'affcat -h ; bash'}
+   [exec] (autopsy) {xterm -bg black -fa 'Monospace' -fs 11 -e 'autopsy ; bash'}
+   [exec] (binwalk) {xterm -bg black -fa 'Monospace' -fs 11 -e 'binwalk -h ; bash'}
+   [exec] (blkcalc) {xterm -bg black -fa 'Monospace' -fs 11 -e 'blkcalc ; bash'}
+   [exec] (blkcat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'blkcat ; bash'}
+   [exec] (blkls) {xterm -bg black -fa 'Monospace' -fs 11 -e 'blkls ; bash'}
+   [exec] (blkstat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'blkstat ; bash'}
+   [exec] (bulk_extractor) {xterm -bg black -fa 'Monospace' -fs 11 -e 'bulk_extractor -h ; bash'}
+   [exec] (chkrootkit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'chkrootkit -h ; bash'}
+   [exec] (dc3dd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dc3dd --help ; bash'}
+   [exec] (dcfldd) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dcfldd --help ; bash'}
+   [exec] (ddrescue) {xterm -bg black -fa 'Monospace' -fs 11 -e 'dd_rescue -h ; bash'}
+   [exec] (dex2jar) {xterm -bg black -fa 'Monospace' -fs 11 -e 'd2j-dex2jar -h ; bash'}
+   [exec] (ewfacquire) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ewfacquire -h ; bash'}
+   [exec] (extundelete) {xterm -bg black -fa 'Monospace' -fs 11 -e 'extundelete --help ; bash'}
+   [exec] (ffind) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ffind ; bash'}
+   [exec] (fls) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fls ; bash'}
+   [exec] (foremost) {xterm -bg black -fa 'Monospace' -fs 11 -e 'foremost -h ; bash'}
+   [exec] (fsstat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'fsstat ; bash'}
+   [exec] (galleta) {xterm -bg black -fa 'Monospace' -fs 11 -e 'galleta ; bash'}
+   [exec] (guymager) {sh -c "guymager"}
+   [exec] (hashdeep) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hashdeep -h ; bash'}
+   [exec] (hfind) {xterm -bg black -fa 'Monospace' -fs 11 -e 'hfind ; bash'}
+   [exec] (icat-sleuthkit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'icat ; bash'}
+   [exec] (ifind) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ifind ; bash'}
+   [exec] (ils-sleuthkit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'ils ; bash'}
+   [exec] (img_cat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'img_cat ; bash'}
+   [exec] (img_stat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'img_stat ; bash'}
+   [exec] (istat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'istat ; bash'}
+   [exec] (jcat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'jcat ; bash'}
+   [exec] (jls) {xterm -bg black -fa 'Monospace' -fs 11 -e 'jls ; bash'}
+   [exec] (mactime-sleuthkit) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mactime ; bash'}
+   [exec] (magicrescue) {xterm -bg black -fa 'Monospace' -fs 11 -e 'magicrescue ; bash'}
+   [exec] (missidentify) {xterm -bg black -fa 'Monospace' -fs 11 -e 'missidentify -h ; bash'}
+   [exec] (mmcat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mmcat ; bash'}
+   [exec] (mmls) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mmls ; bash'}
+   [exec] (mmstat) {xterm -bg black -fa 'Monospace' -fs 11 -e 'mmstat ; bash'}
+   [exec] (pasco) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pasco ; bash'}
+   [exec] (pdfid) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pdfid -h ; bash'}
+   [exec] (pdf-parser) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pdf-parser -h ; bash'}
+   [exec] (pdgmail) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pdgmail -h ; bash'}
+   [exec] (peepdf) {xterm -bg black -fa 'Monospace' -fs 11 -e 'peepdf -h ; bash'}
+   [exec] (pev) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pev -h ; bash'}
+   [exec] (readpst) {xterm -bg black -fa 'Monospace' -fs 11 -e 'readpst -h ; bash'}
+   [exec] (recoverjpeg) {xterm -bg black -fa 'Monospace' -fs 11 -e 'recoverjpeg -h ; bash'}
+   [exec] (reglookup) {xterm -bg black -fa 'Monospace' -fs 11 -e 'reglookup ; bash'}
+   [exec] (regripper) {sh -c "regripper"}
+   [exec] (rifiuti2) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rifiuti2 -h ; bash'}
+   [exec] (rifiuti) {xterm -bg black -fa 'Monospace' -fs 11 -e 'rifiuti ; bash'}
+   [exec] (safecopy) {xterm -bg black -fa 'Monospace' -fs 11 -e 'safecopy -h ; bash'}
+   [exec] (scalpel) {xterm -bg black -fa 'Monospace' -fs 11 -e 'scalpel -h ; bash'}
+   [exec] (scrounge-ntfs) {xterm -bg black -fa 'Monospace' -fs 11 -e 'scrounge-ntfs -h ; bash'}
+   [exec] (sigfind) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sigfind ; bash'}
+   [exec] (sorter) {xterm -bg black -fa 'Monospace' -fs 11 -e 'sorter ; bash'}
+   [exec] (srch_strings) {xterm -bg black -fa 'Monospace' -fs 11 -e 'srch_strings -h ; bash'}
+   [exec] (tsk_comparedir) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tsk_comparedir ; bash'}
+   [exec] (tsk_gettimes) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tsk_gettimes -h ; bash'}
+   [exec] (tsk_loaddb) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tsk_loaddb ; bash'}
+   [exec] (tsk_recover) {xterm -bg black -fa 'Monospace' -fs 11 -e 'tsk_recover ; bash'}
+   [exec] (vinetto) {xterm -bg black -fa 'Monospace' -fs 11 -e 'vinetto -h ; bash'}
+   [exec] (volafox) {xterm -bg black -fa 'Monospace' -fs 11 -e 'volafox ; bash'}
+   [exec] (volatility) {xterm -bg black -fa 'Monospace' -fs 11 -e 'volatility -h ; bash'}
+[end]
+[submenu] (12 Reporting)
+   [exec] (dradis) {sh -c "service dradis start; xdg-open http://127.0.0.1:3000"}
+   [exec] (faraday IDE) {xterm -bg black -fa 'Monospace' -fs 11 -e 'python-faraday ; bash'}
+   [exec] (keepnote) {sh -c "keepnote"}
+   [exec] (magictree) {sh -c "magictree"}
+   [exec] (pipal) {xterm -bg black -fa 'Monospace' -fs 11 -e 'pipal -h ; bash'}
+   [exec] (recordmydesktop) {xterm -bg black -fa 'Monospace' -fs 11 -e 'recordmydesktop -h ; bash'}
+[end]</pre>
+<p>Right-click the desktop to run the menu and hit restart to apply all the changes.</p>
+<h2 id="fluxbox-key-bindings">Fluxbox Key Bindings</h2>
+<p>Edit <span class="system">~/.fluxbox/keys</span> to configure keyboard shortcuts, I tried to set a typical Desktop for myself, you can configure it to your preference, here is an example of what I've added to the ending of the file:</p>
+<pre>################### Customized #######################
+# Notes:
+# Mod1 is Alt, Mod4 is Windows key, Mouse1 is left click and Mouse3 is right click
+# Arrows are 113 114 111 116 (left, right, up, down)
+
+# Screenshots (Skip these if using shutter instead)
+None Print	:ExecCommand xfce4-screenshooter -f
+Mod1 Print	:ExecCommand xfce4-screenshooter -w
+Mod4 Print	:ExecCommand xfce4-screenshooter -r
+
+# Windows-Like
+Mod4 r		:Exec fbrun
+Mod4 e		:Exec nautilus --no-desktop
+Mod4 d		:ToggleCmd {ShowDesktop} {DeIconify all originquiet}
+Mod4 m		:ToggleCmd {ShowDesktop} {DeIconify all originquiet}
+Mod4 l		:Exec dm-tool lock
+Mod4 Shift d	:DeIconify all
+
+# Gnome-Like
+Control Mod1 113		:PrevWorkspace
+Control Mod1 114		:NextWorkspace
+OnTitlebar Double Mouse1	:Maximize
+# Note: To use this last one you should comment the previously existing "OnTitlebar Double Mouse1" line
+
+# Launchers
+Control Mod1 c	:ExecCommand wmctrl -a chromium-browser || chromium-browser
+Control Mod1 t	:ExecCommand wmctrl -a gnome-terminal || gnome-terminal
+Control Mod1 p	:ExecCommand wmctrl -a pidgin || pidgin
+Control Mod1 m	:ExecCommand wmctrl -a thunderbird || thunderbird
+
+# Comparing panels (Set considering resolution on ResizeTo clause)
+OnTitlebar Mod4 Mouse3	:MacroCmd {ResizeTo 720 850} {MoveTo 0 0 Right}
+OnTitlebar Mod4 Mouse1	:MacroCmd {ResizeTo 720 850} {MoveTo 0 0 Left}</pre>
+<p>Navigate the file and get familiar with it because having this ability to set shortcuts is very important, and the actions that can be taken on a shortcut are almost unlimited</p>
+<h2 id="startup">Startup</h2>
+<p>On every start, Fluxbox will run a shell script located in <span class="system">~/.fluxbox/startup</span>, it's a good place to run applications that we may like to run automatically. To my preference, I use the Gnome network manager to easily connect Wi-Fi networks, and also use a lot Gnome-Do. So I will add them after the section "Applications you want to run with fluxbox:"</p>
+<pre># Applications you want to run with fluxbox.
+# MAKE SURE THAT APPS THAT KEEP RUNNING HAVE AN ''&amp;'' AT THE END.
+#
+# unclutter -idle 2 &amp;
+# wmnd &amp;
+# wmsmixer -w &amp;
+# idesk &amp;
+gnome-do &amp;
+nm-applet &amp; </pre>
+<p>Note that the commented lines are there in the default <span class="system">startup</span> file.</p>
+<h2 id="style">Style</h2>
+<p>Open fluxbox and from the Fluxbox menu, select styles and choose your preference, I like "Debian Dark" but that's a very personal preference.</p>
+<p style="text-align: center;"><a class="fancybox" id="img-style-menu" href="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/big/style-menu.png"><img src="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/style-menu.png" width="370" alt="Desktop Style" /></a></p>
+<p>Right click the toolbar in the bottom to set the toolbar preferences.</p>
+<p>This is also a personal preference, but I would strongly recommend setting "Toolbar Placement" to "Bottom Right" and "Toolbar width percentage" to 95 so that you have a little space remaining to deploy the menu with the right click when you have maximized windows.</p>
+<p style="text-align: center;"><a class="fancybox" id="img-style-toolbar" href="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/big/style-toolbar.png"><img src="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/style-toolbar.png" width="450" alt="Toolbar" /></a></p>
+<p>In the init file (<span class="system">~/.fluxbox/init</span>) look for the line starting with "<span class="system">session.screen0.toolbar.tools</span>", in that setting you will find the order of the tools in the toolbar, I like to set it with the clock to the right like this:</p>
+<pre>session.screen0.toolbar.tools:	workspacename, prevworkspace, nextworkspace, iconbar, systemtray, prevwindow, nextwindow, clock</pre>
+<p>And I also like to shorten the clock format like this:</p>
+<pre>session.screen0.strftimeFormat:	%d %b, %k:%M</pre>
+<p>At this point you should be restarting fluxbox (not rebooting the system) to apply changes, go to Fluxbox menu / Restart</p>
+<h2 id="wallpaper">Wallpaper</h2>
+<p>This is only a look and feel setting, but may help to have a comfortable desktop</p>
+<p>Edit the <span class="system">~/.fluxbox/overlay</span> file to override the style settings, I copied my wallpaper to <span class="system">~/.fluxbox/pixmax/kali.png</span> and then set the overlay file like this:</p>
+<pre>! The following line will prevent styles from setting the background.
+! background: none
+background: 		aspect
+background.pixmap:	~/.fluxbox/pixmaps/kali.png</pre>
+<h2 id="workspaces">Workspaces</h2>
+<p>Fluxbox also supports multi-workspace, by default you get four workspaces to work, you can check on the <span class="system">keys</span> file for further information on how to use them. Nonetheless, I've set the Gnome-like setting to use Ctrl+Alt+Arrow to move in between them.</p>
+<p>If you are a very tidy and procedural person, you may want to rename your workspaces in the init file setting the <span class="system">session.screen0.workspaceNames</span> value, for instance:</p>
+<pre>session.screen0.workspaceNames:	Terminals, Web, Wifi, Scanning,</pre>
+<h2 id="conclusion">Conclusion</h2>
+<p>After following these steps you will get a lightweight desktop for Kali. By default, Kali comes with Gnome Shell as a desktop environment and GDM3 for the login screen, which are unsuitable for computers with limited resources, virtual machines that have no good graphical acceleration, or for running Kali as a live persistent USB.</p>
+<p>The configuration files that were covered in this howto are very self-explanatory, and many of the configurations done are based entirely on my personal preference or experience, so feel free to use the information presented here as a leverage to set your Fluxbox desktop to better suit your needs.</p>
+<p style="text-align: center;"><a class="fancybox" id="img-conclusion-desktop" href="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/big/conclusion-desktop.png"><img src="https://www.howtoforge.com/images/setup_fluxbox_desktop_on_kali_linux/conclusion-desktop.png" width="550" alt="Fluxbox Desktop" /></a></p>
+<div style="height:30px; margin-top:20px;">
+<p style="text-align:right;"><img src="/images/pdficon_small.png" /> <a href="/subscription/">view as pdf</a> | <img src="/images/print.gif" /> <a href="/subscription/">print</a></p>
+</div>
+<div style="height:30px; margin-top:20px;">
+<div style="float:left;"><b>Share this page:</b></div>
+<div style="float:left; margin-left:10px;"><a href="https://twitter.com/share" class="twitter-share-button" data-count="horizontal" data-lang="en-US" data-url="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/" data-via="howtoforgecom">Tweet</a> <a class="twitter-follow-button" href="https://twitter.com/howtoforgecom">Follow</a></div>
+<div style="float:left; margin-left:20px;"><fb:like href="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/" layout="button_count" action="recommend" font="trebuchet ms" colorscheme="light"></fb:like></div>
+<div style="float:left; margin-left:50px;"><div class="g-plusone" data-size="medium" data-count="true" data-href="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/"></div></div>
+</div>
+</div>
+
+
+<div id="htfContentPagePaging">
+<h2>Suggested articles</h2>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle" style="display:block" data-ad-format="autorelaxed" data-ad-client="ca-pub-3043223216276099" data-ad-slot="8940054090"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</div>
+
+
+<div id="htfContentPageComment">
+<a name="comments"></a>
+<h2>3 Comment(s)</h2>
+
+<div id="commentform">
+<div class="commentContainerHead" style="font-size:18px;">Add comment</div>
+<div class="commentContainer">
+<form method="post" action="/tutorial/setup-fluxbox-desktop-on-kali-linux/#comments">
+<input type="hidden" name="reply_to" id="reply-to-comment" value="0" />
+<div id="commentFormDetail">
+<div style="width:48%; float:left; margin-right:3%">
+<label for="commentname">Name *</label>
+<input id="commentname" name="commentname" value="" />
+</div>
+<div style="width:48%;float:left;">
+<label for="commentname">Email *</label>
+<input id="commentemail" name="commentemail" value="" />
+</div>
+<div style="clear:both;"></div>
+</div>
+<textarea id="commentedit" name="commentedit" style="width:auto;"></textarea>
+<div>
+<div style="float:left;">
+<div class="g-recaptcha" data-sitekey="6LdX9fUSAAAAALWwVoPdeXScMSketz4npF-0QcQ1"></div>
+<script type="text/javascript" src="https://www.google.com/recaptcha/api.js?hl=en">
+      </script>
+</div>
+<div style="margin-top:10px;margin-bottom:10px;">
+<input type="submit" name="submit" class="button primary" style="float:right;" value="Submit comment">
+</div>
+<div style="clear:both;"></div>
+</div>
+
+<script>
+	tinymce.init({
+		selector: "textarea#commentedit",
+		theme: "modern",
+		height: 100,
+		apply_source_formatting : true,
+		remove_linebreaks : false,
+		menubar : false,
+		/*auto_focus : "commentedit",*/
+		plugins: [
+		"link"
+		],
+		/*plugins: [
+			"advlist autolink link image lists charmap print preview hr anchor pagebreak spellchecker",
+			"searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking",
+			"save table contextmenu directionality emoticons template paste textcolor"
+		],*/
+		content_css: "https://www.howtoforge.com/themes/howtoforge/css/custom.css",
+		toolbar: "undo redo | bold italic link", 
+		/*style_formats: [
+			{title: 'Bold text', inline: 'b'},
+			{title: 'Red text', inline: 'span', styles: {color: '#ff0000'}},
+			{title: 'Red header', block: 'h1', styles: {color: '#ff0000'}},
+			{title: 'Example 1', inline: 'span', classes: 'example1'},
+			{title: 'Example 2', inline: 'span', classes: 'example2'},
+			{title: 'Table styles'},
+			{title: 'Table row 1', selector: 'tr', classes: 'tablerow1'}
+		]*/
+	}); 
+	</script>
+</form>
+</div>
+</div>
+
+<h3>Comments</h3>
+<div class="commentContainerHead commentLevel0">
+<div class="floatLeft"><b>From:</b> Javier <b>at:</b> <i>2017-11-15 19:49:36</i></div>
+<div class="floatRight"><a href="#" data-comment="23202" class="reply-to">Reply</a> &nbsp;</div>
+<div class="clearBoth"></div>
+</div>
+<div id="comment23202" class="commentContainer commentLevel0">
+<p><p>Awesome Tutorial Jorge! Thank for Sharing</p></p>
+</div>
+<div class="commentContainerHead commentLevel0">
+<div class="floatLeft"><b>From:</b> Miguel Mayol i Tur <b>at:</b> <i>2017-11-16 13:21:48</i></div>
+<div class="floatRight"><a href="#" data-comment="23213" class="reply-to">Reply</a> &nbsp;</div>
+<div class="clearBoth"></div>
+</div>
+<div id="comment23213" class="commentContainer commentLevel0">
+<p><p>If you like arch based distros Manjaro has a good fluxbox version, and you can add teh blackarch repo that is more or less the same than the kali one and you can save all this configuration work.</p></p>
+</div>
+<div class="commentContainerHead commentLevel0">
+<div class="floatLeft"><b>From:</b> Facundo <b>at:</b> <i>2017-11-16 14:19:01</i></div>
+<div class="floatRight"><a href="#" data-comment="23214" class="reply-to">Reply</a> &nbsp;</div>
+<div class="clearBoth"></div>
+</div>
+<div id="comment23214" class="commentContainer commentLevel0">
+<p>Great job. Just what I needed. Thanks Jorge!</p>
+</div>
+</div>
+
+<div class="breadBoxBottom">
+<nav>
+<fieldset class="breadcrumb">
+<span class="crumbs">
+<span class="crust homeCrumb" itemscope="itemscope" itemtype="http://data-vocabulary.org/Breadcrumb">
+<a href="/" class="crumb" rel="up" itemprop="url"><span itemprop="title">Tutorials</span></a>
+<span class="arrow"><span></span></span>
+</span>
+<span class="crust selectedTabCrumb" itemscope="itemscope" itemtype="http://data-vocabulary.org/Breadcrumb">
+<a href="/tutorial/setup-fluxbox-desktop-on-kali-linux/" class="crumb" rel="up" itemprop="url"><span itemprop="title">Perfect Fluxbox Desktop on Kali Linux</span></a>
+<span class="arrow"><span>&gt;</span></span>
+</span>
+</span>
+</fieldset>
+</nav>
+</div>
+<script>
+<!--
+
+$(document).on('click', 'a.reply-to', function(e) {
+	e.preventDefault();
+	
+	var self = $(this);
+	var cid = self.attr('data-comment');
+	console.log(cid);
+	if(!cid) return this;
+	
+	$('#commentform').insertAfter('#comment' + cid);
+	$('#reply-to-comment').val(cid);
+	/*tinyMCE.activeEditor.focus();*/
+	var textareaId = 'commentedit';
+	tinyMCE.get(textareaId).remove();
+	tinyMCE.execCommand("mceAddEditor", false, textareaId);
+	tinyMCE.activeEditor.focus();
+});
+//-->
+</script>
+<div style="margin-top:10px;margin-bottom:10px;text-align:center;">
+
+<center>
+
+
+<script type='text/javascript'>
+GA_googleFillSlot("howtoforge_com_article_leaderboard_b_728x90");
+</script>
+
+</center>
+</div>
+
+
+<form action="/community/login/login?redirect=/tutorial/setup-fluxbox-desktop-on-kali-linux/" method="post" class="xenForm eAuth" id="login" style="display:none">
+<ul id="eAuthUnit">
+<li><a href="/community/register/facebook?reg=1" class="fbLogin" tabindex="110"><span>Log in with Facebook</span></a></li>
+<li><a href="/community/register/twitter?reg=1" class="twitterLogin" tabindex="110"><span>Log in with Twitter</span></a></li>
+<li><span class="googleLogin GoogleLogin JsOnly" tabindex="110" data-client-id="198773272284-b6tfk0c28bje81p774prrcrkq9jb3o44.apps.googleusercontent.com" data-redirect-url="/community/register/google?code=__CODE__&amp;csrf=hVMXbW_3rnrmq4Em"><span>Log in with Google</span></span></li>
+</ul>
+<div class="ctrlWrapper">
+<dl class="ctrlUnit">
+<dt><label for="LoginControl">Your name or email address:</label></dt>
+<dd><input type="text" name="login" id="LoginControl" class="textCtrl" tabindex="101" /></dd>
+</dl>
+<dl class="ctrlUnit">
+<dt>
+<label for="ctrl_password">Do you already have an account?</label>
+</dt>
+<dd>
+<ul>
+<li><label for="ctrl_not_registered"><input type="radio" name="register" value="1" id="ctrl_not_registered" tabindex="105" />
+No, create an account now.</label></li>
+<li><label for="ctrl_registered"><input type="radio" name="register" value="0" id="ctrl_registered" tabindex="105" checked="checked" class="Disabler" />
+Yes, my password is:</label></li>
+<li id="ctrl_registered_Disabler">
+<input type="password" name="password" class="textCtrl" id="ctrl_password" tabindex="102" />
+<div class="lostPassword"><a href="/community/lost-password/" tabindex="106">Forgot your password?</a></div>
+</li>
+</ul>
+</dd>
+</dl>
+<dl class="ctrlUnit submitUnit">
+<dt></dt>
+<dd>
+<input type="submit" class="button primary" value="Log in" tabindex="104" data-loginPhrase="Log in" data-signupPhrase="Sign up" />
+<label for="ctrl_remember" class="rememberPassword"><input type="checkbox" name="remember" value="1" id="ctrl_remember" tabindex="103" /> Stay logged in</label>
+</dd>
+</dl>
+</div>
+<input type="hidden" name="cookie_check" value="1" />
+<input type="hidden" name="redirect" value="/community/" />
+<input type="hidden" name="_xfToken" value="" />
+</form>
+
+</div>
+</div>
+
+<aside>
+<div class="sidebar">
+<div class="section loginButton">
+<div class="secondaryContent">
+<label for="LoginControl" id="SignupButton"><a href="/community/login/" class="inner">Sign up now!</a></label>
+</div>
+</div>
+<div class="widget WidgetFramework_WidgetRenderer_ShareThisPage" id="widget-2">
+
+<div class="widget WidgetFramework_WidgetRenderer_ShareThisPage" id="widget-5">
+<div class="section infoBlock sharePage">
+<div class="secondaryContent socialMediaIcon">
+<a href="https://twitter.com/howtoforgecom" target="_blank"><img src="/images/socialmedia/64x64/twitter.png" /></a>
+<a href="https://www.facebook.com/howtoforge" target="_blank"><img src="/images/socialmedia/64x64/facebook.png" /></a>
+<a href="https://plus.google.com/+howtoforge/posts" target="_blank"><img src="/images/socialmedia/64x64/googleplus.png" /></a>
+<a href="https://www.howtoforge.com/feed" target="_blank"><img src="/images/socialmedia/64x64/rss.png" /></a>
+</div>
+</div>
+</div>
+<div class="section widget-group-no-name widget-container">
+<div class="secondaryContent widget WidgetFramework_WidgetRenderer_Stats" id="widget-3">
+<p class="mnuinfo">Tutorial Info</p>
+<div class="pairsJustified">
+<dl class="discussionCount">
+<dt>Author:</dt>
+<dd>Jorge V</dd>
+</dl>
+<dl class="discussionCount">
+<dt>Published:</dt>
+<dd>Nov 15, 2017</dd>
+</dl>
+<dl class="discussionCount">
+<dt>Tags:</dt>
+<dd><a href='/tutorials/desktop/' rel='tag'>desktop</a>, <a href='/tutorials/linux/' rel='tag'>linux</a></dd>
+</dl>
+</div>
+</div>
+</div>
+
+<div class="widget WidgetFramework_WidgetRenderer_ShareThisPage" id="widget-5">
+<div class="section infoBlock sharePage">
+<div class="secondaryContent">
+<p class="mnuinfo mnushare">Share This Page</p>
+<div class="tweet shareControl">
+<a href="https://twitter.com/share" class="twitter-share-button" data-count="horizontal" data-lang="en-US" data-url="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/" data-via="howtoforgecom">Tweet</a> <a class="twitter-follow-button" data-show-screen-name="false" href="https://twitter.com/howtoforgecom">Follow</a>
+</div>
+<div class="facebookLike shareControl">
+<fb:like href="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/" layout="button_count" action="recommend" font="trebuchet ms" colorscheme="light"></fb:like>
+</div>
+<div class="plusone shareControl">
+<div class="g-plusone" data-size="medium" data-count="true" data-href="https://www.howtoforge.com/tutorial/setup-fluxbox-desktop-on-kali-linux/"></div>
+</div>
+</div>
+</div>
+</div>
+
+
+
+<script type="text/javascript">
+    google_ad_client = "ca-pub-3043223216276099";
+    google_ad_slot = "6709042890";
+    google_ad_width = 300;
+    google_ad_height = 600;
+</script>
+
+<script type="text/javascript" src="//pagead2.googlesyndication.com/pagead/show_ads.js">
+</script>
+
+
+<div class="section widget-group-no-name widget-container">
+<div class="secondaryContent widget WidgetFramework_WidgetRenderer_Stats" id="widget-3">
+<p class="mnuinfo">Popular Tutorials</p>
+<div class="pairsJustified">
+<ul>
+<li><a href="/tutorial/install-mongodb-on-ubuntu-16.04/">How to Install and Configure MongoDB on Ubuntu 16.04</a></li>
+<li><hr /></li>
+<li><a href="/tutorial/perfect-server-debian-9-stretch-apache-bind-dovecot-ispconfig-3-1/">The Perfect Server - Debian 9 (Stretch) with Apache, BIND, Dovecot, PureFTPD and ISPConfig 3.1</a></li>
+<li><hr /></li>
+<li><a href="/linux_lvm">A Beginner's Guide To LVM</a></li>
+<li><hr /></li>
+<li><a href="/tutorial/perfect-server-ubuntu-16.04-with-apache-php-myqsl-pureftpd-bind-postfix-doveot-and-ispconfig/">The Perfect Server - Ubuntu 16.04 (Xenial Xerus) with Apache, PHP, MySQL, PureFTPD, BIND, Postfix, Dovecot and ISPConfig 3.1</a></li>
+<li><hr /></li>
+<li><a href="/tutorial/how-to-install-grafana-on-linux-servers/">How to Install Grafana on Linux Servers</a></li>
+<li><hr /></li>
+<li><a href="/tutorial/install-apache-with-php-and-mysql-on-ubuntu-16-04-lamp/">Ubuntu 16.04 (LTS) LAMP server tutorial with Apache, PHP 7, and MySQL</a></li>
+<li><hr /></li>
+<li><a href="/tutorial/ubuntu-perfect-server-with-apache-php-myqsl-pureftpd-bind-postfix-doveot-and-ispconfig/">The Perfect Server - Ubuntu 17.10 (Artful Aardvark) with Apache, PHP, MySQL, PureFTPD, BIND, Postfix, Dovecot and ISPConfig 3.1</a></li>
+<li><hr /></li>
+<li><a href="/tutorial/how-to-use-ftp-on-the-linux-shell/">How to use the Linux ftp command to up- and download files on the shell</a></li>
+<li><hr /></li>
+<li><a href="/tutorial/linux-grep-command/">How to use grep to search for strings in files on the shell</a></li>
+<li><hr /></li>
+<li><a href="/setting-changing-resetting-mysql-root-passwords">Setting, Changing And Resetting MySQL Root Passwords</a></li>
+<li><hr /></li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</div>
+<footer>
+<div class="footer">
+<div class="pageWidth">
+<div class="pageContent">
+<div class='skin_branding'><a href="http://www.xenfocus.com" rel="nofollow">Xenforo skin</a><span> by <a href="http://www.xenfocus.com" rel="nofollow">Xenfocus</a></span></div>
+<ul class="footerLinks">
+<li><a href="/contribute/">Contribute</a></li>
+<li><a href="/community/misc/contact">Contact</a></li>
+<li><a href="/community/help/">Help</a></li>
+<li><a href="/imprint/">Imprint</a></li>
+<li><a href="/" class="homeLink">Tutorials</a></li>
+<li><a href="#navigation" class="topLink">Top</a></li>
+<li><a href="/feed" rel="alternate" class="globalFeed" target="_blank" title="RSS-Feed for Howtoforge">RSS-Feed</a></li>
+</ul>
+<span class="helper"></span>
+</div>
+</div>
+</div>
+<div class="footerLegal">
+<div class="pageWidth">
+<div class="pageContent">
+<ul id="legal">
+<li><a href="/community/help/terms">Terms</a></li>
+</ul>
+<div id="copyright"><a href="https://www.howtoforge.com" class="concealed">Howtoforge <span>&copy; projektfarm GmbH.</span></a></div>
+<span class="helper"></span>
+</div>
+</div>
+</div>
+</footer>
+<div style="height:100px;"></div>
+<script>
+
+jQuery.extend(true, XenForo,
+{
+	visitor: { user_id: 0 },
+	serverTimeInfo:
+	{
+		now: 1409831907,
+		today: 1409781600,
+		todayDow: 4
+	},
+	_lightBoxUniversal: "0",
+	_enableOverlays: "1",
+	_animationSpeedMultiplier: "1",
+	_overlayConfig:
+	{
+		top: "10%",
+		speed: 200,
+		closeSpeed: 100,
+		mask:
+		{
+			color: "rgb(0, 0, 0)",
+			opacity: "0.6",
+			loadSpeed: 200,
+			closeSpeed: 100
+		}
+	},
+	_ignoredUsers: [],
+	_loadedScripts: {"node_list":true,"node_category":true,"node_forum":true,"sidebar_share_page":true,"wf_default":true,"bbm_buttons":true,"login_bar":true,"twitter":true},
+	_cookieConfig: { path: "/", domain: "", prefix: "xf_"},
+	_csrfToken: "",
+	_csrfRefreshUrl: "/community/login/csrf-token-refresh",
+	_jsVersion: "303ae0ca"
+});
+jQuery.extend(XenForo.phrases,
+{
+	cancel: "Cancel",
+
+	a_moment_ago:    "A moment ago",
+	one_minute_ago:  "1 minute ago",
+	x_minutes_ago:   "%minutes% minutes ago",
+	today_at_x:      "Today at %time%",
+	yesterday_at_x:  "Yesterday at %time%",
+	day_x_at_time_y: "%day% at %time%",
+
+	day0: "Sunday",
+	day1: "Monday",
+	day2: "Tuesday",
+	day3: "Wednesday",
+	day4: "Thursday",
+	day5: "Friday",
+	day6: "Saturday",
+
+	_months: "January,February,March,April,May,June,July,August,September,October,November,December",
+	_daysShort: "Sun,Mon,Tue,Wed,Thu,Fri,Sat",
+
+	following_error_occurred: "The following error occurred",
+	server_did_not_respond_in_time_try_again: "The server did not respond in time. Please try again.",
+	logging_in: "Logging in",
+	click_image_show_full_size_version: "Click this image to show the full-size version.",
+	show_hidden_content_by_x: "Show hidden content by {names}"
+});
+
+// Facebook Javascript SDK
+XenForo.Facebook.appId = "";
+XenForo.Facebook.forceInit = true;
+
+/*
+document.addEventListener('DOMContentLoaded', function(event) {
+  cookieChoices.showCookieConsentBar('Cookies erleichtern die Bereitstellung unserer Dienste. Mit der Nutzung unserer Dienste erklären Sie sich damit einverstanden, dass wir Cookies verwenden.',
+  'OK');
+});
+*/
+
+$(document).ready(function() {
+	$("a.fancybox").fancybox();
+});
+
+</script>
+<script async type="text/javascript" src="//cdn.fancybar.net/ac/fancybar.js?zoneid=1502&serve=C6ADVKE&placement=howtoforge" id="_fancybar_js"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-2155872-1', 'auto');
+  ga('set', 'anonymizeIp', true);
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

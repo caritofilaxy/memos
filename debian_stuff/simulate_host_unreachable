@@ -1,0 +1,11 @@
+# blackhole all packets destined for 192.168.2.1
+ip route add blackhole 192.168.2.1
+# to delete the same route, replace add with del
+ip route del blackhole 192.168.2.1
+
+ip route add unreachable 192.168.2.1
+
+# resond with icmp-host-unreachable for *any* outbound packet to 192.168.2.1
+iptables -I OUTPUT -d 192.168.2.1 -j REJECT --reject-with=icmp-host-unreachable
+# delete the same rule (without looking up the rule #)
+iptables -D OUTPUT -d 192.168.2.1 -j REJECT --reject-with=icmp-host-unreachable

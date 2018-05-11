@@ -1,0 +1,15 @@
+http://www.sendmail.org/~ca/email/mutt/manual.html
+http://www.mutt.org/doc/manual/
+
+
+shift D - tag message to delete
+    ~b search in bodies
+    ~B search in all message
+    ~f from user
+
+
+forward with attachments
+
+.muttrc:
+set mime_forward
+set mime_forward_rest=yes

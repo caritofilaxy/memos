@@ -1,0 +1,20 @@
+main.cf
+...
+virtual_mailbox_domains = myhappydomain.com
+virtual_mailbox_base = /home/vmail
+virtual_mailbox_maps = hash:$config_directory/vmailbox_table
+virtual_minimum_uid = 5000
+virtual_uid_maps = static:5000
+virtual_gid_maps = static:5000
+virtual_alias_maps = hash:$config_directory/alias_table
+...
+
+$config_directory/vmailbox_table
+
+...
+user@myhappydomain.com  myhappydomain.com/user/
+...
+
+trailing slash is mandatory
+all mail get to $virtual_mailbox_base/myhappydomain.com/user/
+

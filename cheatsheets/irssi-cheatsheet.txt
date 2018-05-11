@@ -1,0 +1,54 @@
+/help
+
+/save   # save config
+/part   # leave channel
+/quit   # exit irssi
+
+# freenode channel search
+/msg alis LIST *keyword*
+
+# OFTC
+/list #*target*(,>5)?
+
+scroll PGUP PGDN
+to properly scroll in tmux set 'alias irssi='TERM=screen-256color'' in .bashrc
+
+# create command alias
+/alias wg window goto
+
+
+####################################
+sample config
+
+servers = (
+);
+
+chatnets = {
+};
+
+channels = (
+);
+
+ignores = (
+  { level = "JOINS PARTS QUITS NICKS"; channels = ( "#{$channel_name}" ); },
+);
+
+####################################
+Adding entries on example of kernelnewbies
+
+/network add -nick {$mynick} OFTC
+/network list
+
+/server add -network OFTC irc.oftc.net
+/server list
+
+/channel add -auto #kernelnewbies OFTC
+/channel list
+
+/save
+
+/connect OFTC
+
+/set autolog_path ~/.irssi/logs/$tag/$0/%Y/%Y-%m-%d.log
+/set autolog on
+/save

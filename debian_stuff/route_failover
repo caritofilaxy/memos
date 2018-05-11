@@ -1,0 +1,73 @@
+# https://www.thegeekstuff.com/2014/08/add-route-ip-command/
+
+# !!! all this stuff works for incoming traffic only 
+# !!! in order to set outgoing you should change default gateway to failover ip
+
+eth0 - 168.175.127.110/29 gw 168.175.127.105 ( subnet 168.175.127.104/29 )
+eth1 - 80.249.183.246/29                      ( subnet 80.249.183.240/29 )
+
+With the above settings, you may be able to ping both the 
+gateways and communicate with other devices without any issues. 
+But, remember that all the traffic is routed through eth0 by default.
+
+When you ping the IP address 80.249.183.246 from outside your network 
+it will not be pingable.
+
+In order to implement this, you need a create a new policy in the routing table. 
+The routing table is located at /etc/iproute2/rt_tables.
+
+# cat /etc/iproute2/rt_tables
+# ip rule show
+
+
+## saving table file
+cd /etc/iproute2 && cp rt_tables rt_tables.orig
+
+## adding table
+echo "1 failover" >> /etc/iproute2/rt_tables
+
+# defining route for failover
+ip route add 80.249.183.240/29 dev eth1 src 80.249.183.246 table failover
+ip route add default via 80.249.183.241 dev eth1 table failover
+
+# binding traffic to interface
+ip rule add from 80.249.183.246/29 table failover
+ip rule add to 80.249.183.246/29 table failover
+ip route flush cache
+===================================================================
+#!/bin/sh
+
+ISP0_NET="158.2.64.104"
+ISP0_PREF="29"
+ISP0_IP="158.2.64.109"
+ISP0_GW="158.2.64.105"
+ISP0_IF="eth0"
+ISP0_T="isp0"
+
+ISP1_NET="168.175.99.48"
+ISP1_PREF="29"
+ISP1_IP="168.175.99.50"
+ISP1_GW="168.175.99.49"
+ISP1_IF="eth1"
+ISP1_T="isp1"
+
+DATE=`date +%Y%m%d_%H%M`
+
+cd /etc/iproute2/
+
+cp rt_tables rt_tables_$DATE
+cp rt_tables.def rt_tables
+
+echo "1 $ISP0_T" >> rt_tables
+echo "2 $ISP1_T" >> rt_tables
+
+/sbin/ip r add $ISP0_NET/$ISP0_PREF dev $ISP0_IF src $ISP0_IP table $ISP0_T
+/sbin/ip r add default via $ISP0_GW dev $ISP0_IF table $ISP0_T
+/sbin/ip r add $ISP1_NET/$ISP1_PREF dev $ISP1_IF src $ISP1_IP table $ISP1_T
+/sbin/ip r add default via $ISP1_GW dev $ISP1_IF table $ISP1_T
+/sbin/ip rule add from $ISP0_IP/$ISP0_PREF table $ISP0_T
+/sbin/ip rule add to $ISP0_IP/$ISP0_PREF table $ISP0_T
+/sbin/ip rule add from $ISP1_IP/$ISP1_PREF table $ISP1_T
+/sbin/ip rule add to $ISP1_IP/$ISP1_PREF table $ISP1_T
+/sbin/ip r flush cache
+

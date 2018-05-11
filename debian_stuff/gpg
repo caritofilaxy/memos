@@ -1,0 +1,60 @@
+to generate enough entropy install rng-tools and run rngd -r /dev/urandom before
+# echo "GPG_TTY=/dev/tty" >> ~/.bashrc && source ~/.bashrc
+# gpg2 --gen-key
+# gpg2 --list-secret-keys --fingerprint
+
+-------------------------------------------
+
+disable passphrase
+# gpg2 --edit-key key
+gpg> passwd 
+
+-------------------------------------------
+
+encrypt
+# gpg2 -e -r key file2enc
+
+-------------------------------------------
+
+decrypt 
+# gpg2 -o outfile -d encrypted_file
+
+-------------------------------------------
+
+export 
+# gpg2 --export -a -o public.asc
+# gpg2 --export-secret-keys -a -o secret.asc
+
+# gpg --export -a > keyring.asc
+# gpg --export-secret-keys -a >> keyring.asc
+
+-------------------------------------------
+
+import public key
+# gpg2 --import public.asc
+and sign key by your own
+# gpg2 --ask-cert-level --sign-key key
+
+-------------------------------------------
+
+set trust level 
+# gpg --edit-key key
+gpg> trust
+
+Ultimate: is only used for your own keys. You trust this key 'per se'. Any message signed with that key, will be trusted. This is also the reason why any key from a friend, that is signed by you, will also show as valid (green), even though you did not change the ownertrust of the signed key. The signed key will be valid due to the ultimate ownertrust of your own key.
+
+Full: is used for keys, which you trust to sign other keys. That means, if Alice's key is signed by your Buddy Bob, whose key you set the ownertrust to Full, Alice's key will be trusted. You should only be using Full ownertrust after verifying and signing Bob's key.
+
+Marginal: will make a key show as valid, if it has been signed by at least three keys which you set to 'Marginal' trust-level. Example: If you set Alice's, Bob's and Peter's key to 'Marginal' and they all sign Ed's key, Ed's key will be valid. Due to the complexity of this status, we do not recommend using it.
+
+https://gpgtools.tenderapp.com/kb/faq/what-is-ownertrust-trust-levels-explained
+https://security.stackexchange.com/questions/172371/gnupg-warning-for-a-signed-key-with-trust-level-4
+
+
+-------------------------------------------
+
+delete all keys
+# gpg --delete-secret-and-public-key mark
+
+delete public key
+# gpg --delete-key key

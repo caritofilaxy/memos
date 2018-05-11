@@ -1,0 +1,338 @@
+https://habrahabr.ru/post/321696/
+
+
+Удаленная переустановка Linux по ssh без доступа к консоли
+Серверное администрирование,
+Настройка Linux
+Из песочницы
+Понадобилось мне переустановить сервер, который как бы хостился у знакомых знакомых. Там был сильно устаревший Debian, а, самое главное, система стояла на обычных разделах без lvm и пространство было распределено очень не оптимально. Физический доступ получить к нему было практически нереально, местного админа попросить что-то сделать было можно, но занять это могло неделю. Виртуальный KVM у сервера был, но извне на него попасть было нельзя; у как бы хостера не было лишних IP-адресов, а внутрь его сети попасть было невозможно. Надо было переустановить сервер из-под работающей системы по ssh. Ага, давайте поменяем ротор у турбины не выключая, потом её перезапустим и будет она с новым ротором работать! 
+
+Первой идеей было создать chroot окружение на ram-диске и с него создать lvm и залить систему. Но не тут-то было, не дает система изменить таблицу разделов.
+
+Второй идеей было взять исходники дистрибутива Debian, зашить в них IP-адрес сервера, пересобрать initrd с установщиком Debian, ssh сервером и моими IP, подставить этот initrd в конфиг grub блоком по умолчанию и перегрузиться. После этого я должен был получить ssh консоль с сетевым установщиком. На стенде у меня получилось! Но на бою все окончилось неудачей, сервер не поднялся. Хозяевам сервер оказался не очень нужен, и дело так и заглохло, но у меня осталось ощущение нерешенной задачи. 
+
+Как-то с коллегами обсуждали всякие деструктивные действия с системой (типа rm -rf /) и один из коллег сказал, что можно отключить scsi диск, на котором находится корневой раздел и система не пикнет. Это дало мне идею номер три, взять идею один, оторвать диск, вернуть диск и возвращенный диск будет уже другим, не тем который система не отдавала. Именно так и оказалось. А теперь по пунктам, как же все-таки переустановить систему без доступа к физической консоли. 
+
+Предупреждение! Надо понимать, что все, что мы будем делать — дорога в один конец, при ошибке мы теряем доступ к системе! Вполне возможно, что придется ехать 1500 километров и лезть в шахту, чтобы реанимировать сервер. 
+
+Будем считать, что IP нашей системы 192.168.56.102. Именно так было у меня на стенде. Плюс доступ к интернету через прокси: 
+
+http://proxy:8080
+
+Начинаем работу на исходной системе.
+
+# System #0
+
+Заходим по ssh на сервер:
+
+ssh 192.168.56.102
+
+Создаем каталог и файловую систему для «Системы убийцы», монтируем её:
+
+mkdir /target
+mount none -t tmpfs -o size=1G /target/
+
+Ставим отличную утилиту debootstrap, которая разворачивает минимальную установку Debian, при помощи неё мы создадим chroot окружение:
+
+export http_proxy='http://proxy:8080'
+apt-get -y install debootstrap
+
+Существуют аналогичные утилиты для Федоры и Centos, соответственно febootstrap и yumbootstrap, но я с ними не работал.
+
+Разворачиваем chroot:
+
+debootstrap jessie /target/ http://mirror.mephi.ru/debian/
+
+Первый аргумент — версия, второй — каталог установки, третий — репозиторий.
+
+Бекапим самое необходимое:
+
+mkdir /target/backup
+cp /etc/network/interfaces /target/backup
+
+Самое важное — настройки сетевых интерфейсов, без них не получится попасть в переустановленную систему.
+
+Даем имя chroot-окружению:
+
+echo "Killer_system" > /target/etc/debian_chroot
+
+Слово «Killer_system» будет показываться в приглашении bash. Это важная штука, без неё будет не понятно, где мы в данный момент находимся.
+
+Переходим в новое окружение.
+
+# System #1
+
+chroot /target
+
+Монтируем полезные fs:
+
+mount none -t proc /proc/
+mount none -t sysfs /sys/
+mount none -t devtmpfs /dev/
+mount none -t devpts /dev/pts/
+
+Еще раз ставим debootstrap:
+
+apt-get -y install lvm2 debootstrap
+
+Дальше мои заморочки: у дебиановского пакета openssh-server в рекомендованных пакетах есть пакет xauth, а у него в зависимостях всякие иксовые библиотеки. Я, как сторонник минимализма, не хочу, чтобы на сервере, где не было и не будет графики, ставились огрызки иксов. Поэтому ставим с ключиком --no-install-recommends: 
+
+apt-get -y install openssh-server openssh-client openssh-blacklist openssh-blacklist-extra --no-install-recommends
+
+Правим конфиги. Ставим альтернативный порт для ssh демона, чтобы мы могли зайти на chroot систему по ssh:
+
+sed -i 's/^Port .*$/Port 11122/' /etc/ssh/sshd_config
+
+И разрешаем доступ для root:
+
+sed -i 's/^PermitRootLogin .*$/PermitRootLogin yes/' /etc/ssh/sshd_config
+/etc/init.d/ssh restart
+
+Можно не давать доступ root, а создать пользователя и дать ему sudo права, но тут я сознательно упрощаю.
+
+Дальше надо задать пароль root, так как по умолчанию debootstrap не устанавливает никакие пароли:
+
+passwd root
+
+Заходим в chroot окружение по ssh:
+
+ssh 192.168.56.102 -l root -p 11122
+
+Это мы делаем для того, чтобы полностью отвязаться от старой системы, у которой мы оторвем диски. А так у нас будет полностью автономная система в оперативной памяти, никак не связанная со старой. 
+
+Такой трюк очень хорошо подходит, если мы уходим от хостера, а оставлять ему наши файлы очень не хочется (я знаю, паранойя). На этом этапе просто забиваем диски нулями, если хотим быстро:
+
+dd if=/dev/zero of=/dev/sda bs=1M
+
+Или случайными данными в несколько проходов, если хотим хорошо. Достоинство метода в том, что мы можем дождаться окончания работы dd и, при необходимости, повторить. Если же затирать диски непосредственно из боевой системы, то посмотреть на результаты работы dd мы уже не сможем.
+
+Попробуем простой путь, удалим тома и разделы:
+
+# lvremove /dev/mapper/vg_old-root
+  Logical volume vg_root/lv_root contains a filesystem in use.
+
+# fdisk /dev/sda
+Command (m for help): d
+Selected partition 1
+Partition 1 has been deleted.
+Command (m for help): w
+The partition table has been altered.
+Calling ioctl() to re-read partition table.
+Re-reading the partition table failed.: Device or resource busy
+The kernel still uses the old table. The new table will be used at the next reboot or after you run partprobe(8) or kpartx(8).
+
+Но неудача. При этом раздел удалится, и система сломается, но воспользоваться простым путем без перезагрузки не получится. А перегружаться будет некуда.
+
+Мы пойдем другим путем. Проверяем, где у нас что находится:
+
+pvs
+lsblk
+
+Будем считать, что корневой раздел у нас на диске sda.
+
+Затираем диск, чтобы ни в коем случае его не подцепил lvm. 
+
+Предупреждение! После этого момента возврата нет, даже следующий шаг не такой вредоносный. Задумаемся на минуту, проверим консоль, за которой сидим и оправдаем имя нашего chroot'а:
+
+dd if=/dev/zero of=/dev/sda bs=1M count=100
+
+Отрываем диски:
+
+echo 1 > /sys/block/sda/device/delete
+
+Проверяем, диск оторвался:
+
+lsblk
+
+Подключаем диск обратно:
+
+for i in /sys/class/scsi_host/host?/scan ; do echo "- - -" > $i ; done
+
+Проверяем, что вернулось:
+
+lsblk
+
+Был sda, стал sdb, отлично.
+
+Важный момент: на згрузочном диске необходимо создать один первичный раздел размером на весь диск и этот раздел отдать lvm'у для того чтобы на него смог встать grub. Все остальные диски можно отдавать lvm'у целиком не создавая систему разделов (pvcreate /dev/sdc). Создаем таблицу разделов и один первичный раздел типа 8e, Linux LVM:
+
+fdisk /dev/sdb
+n<CR> <CR> <CR> <CR>
+t<CR> 8e<CR>
+w<CR>
+# create new primary partition from start to end; 8e type
+
+В первоначальной версии скрипта было создание одного логического тома под всю систему, но когда мой коллега переустанавливал Linux по этому скрипту, оказалось, что создание нескольких разделов представляет некоторую трудность, особенно отдельный раздел под логи. Внимание надо обратить на порядок создания точек монтирования и собственно монтирования разделов.
+
+pvcreate /dev/sdb1
+vgcreate vg_root /dev/sdb1
+lvcreate -Zn -L500M -n lv_swap0 vg_root
+lvcreate -Zn -L1G -n lv_root vg_root
+lvcreate -Zn -L2G -n lv_usr vg_root
+lvcreate -Zn -L2G -n lv_var vg_root
+lvcreate -Zn -L1G -n lv_var_log vg_root
+lvcreate -Zn -L1G -n lv_home vg_root
+
+mkswap /dev/vg_root/lv_swap0
+mkfs.ext4 /dev/mapper/vg_root-lv_root
+mkfs.ext4 /dev/mapper/vg_root-lv_usr
+mkfs.ext4 /dev/mapper/vg_root-lv_var
+mkfs.ext4 /dev/mapper/vg_root-lv_var_log
+mkfs.ext4 /dev/mapper/vg_root-lv_home
+
+mkdir /target
+mount /dev/mapper/vg_root-lv_root /target/
+mkdir /target/usr /target/var /target/home
+mount /dev/mapper/vg_root-lv_usr /target/usr
+mount /dev/mapper/vg_root-lv_var /target/var
+mkdir /target/var/log
+mount /dev/mapper/vg_root-lv_var_log /target/var/log
+mount /dev/mapper/vg_root-lv_home /target/home
+
+Разворачиваем уже боевую систему на новое место на жестком диске:
+
+export http_proxy='http://proxy:8080'
+debootstrap jessie /target/ http://mirror.mephi.ru/debian/
+echo "NEW_system" > /target/etc/debian_chroot
+
+Возвращаем на место резервные копии конфигов:
+
+cp /backup/interfaces /target/etc/network
+
+Теперь нас ждет новая система:
+
+# System #2
+
+chroot /target
+
+Обратите внимание, в приглашении командной строки теперь имя нового chroot окружения.
+
+Монтируем файловые системы:
+
+mount none -t proc /proc/
+mount none -t sysfs /sys/
+mount none -t devtmpfs /dev/
+mount none -t devpts /dev/pts/
+
+Ещё можно примонтровать эти файловые системы из родительского chroot'а:
+
+mount -o bind /proc/ /target/proc
+mount -o bind /sys/ /target/sys
+mount -o bind /dev/ /target/dev
+mount -o bind /dev/pts /target/dev/pts
+
+Устанавливаем и конфигурируем openssh:
+
+apt-get -y install openssh-server openssh-client openssh-blacklist openssh-blacklist-extra --no-install-recommends
+
+sed -i 's/^PermitRootLogin .*$/PermitRootLogin yes/' /etc/ssh/sshd_config
+passwd root
+
+Устанавливаем пакеты, без которых не обойтись:
+
+apt-get -y install vim sudo linux-image-3.16.0-4-amd64 grub2 lvm2 psmisc vlan 
+
+Да, я не могу жить без vim и ненавижу nano:
+
+update-alternatives --set editor /usr/bin/vim.basic
+
+В принципе grub прописывается куда надо ещё при установке, но, всё же, для поддержки штанов и морального духа повторим:
+
+update-grub
+grub-install /dev/sdb
+
+Теперь правим конфиги, вначале самый важный, без которого система не поднимется:
+
+cat > /etc/fstab <<EOF
+# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system>                  <mount point>          <type>  <options>         <dump>  <pass>
+
+/dev/mapper/vg_root-lv_root      /               ext4    errors=remount-ro 0       1
+/dev/mapper/vg_root-lv_usr       /usr            ext4    defaults          0       2
+/dev/mapper/vg_root-lv_var       /var            ext4    defaults          0       2
+/dev/mapper/vg_root-lv_var_log   /var/log        ext4    defaults          0       2
+/dev/mapper/vg_root-lv_home      /home           ext4    defaults          0       2
+
+EOF
+
+В файле interfaces все должно быть в порядке, ведь как-то сеть у нас работала?
+
+vim /etc/network/interfaces
+
+В конфиг apt'а добавляем информацию о прокси:
+
+echo 'Acquire::http::Proxy "http://proxy:8080";' > /etc/apt/apt.conf
+
+Меняем hostname:
+
+echo new-system > /etc/hostname
+
+Добавляем строчку в /etc/hosts:
+
+echo "192.168.56.102 new-system.corp new-system" >> /etc/hosts
+
+Добавляем админа:
+
+adduser admin
+usermod -a -G sudo admin
+visudo
+
+Размонтируем файловые системы:
+
+umount /dev/pts
+umount /dev/
+umount /proc/
+umount /sys/
+
+И выходим из chroot'а:
+
+exit
+
+Размонтируем файловые системы:
+
+umount /target/usr/ /target/var/log/ /target/var/ /target/home/
+
+Если размонтировать /dev не удалось, то не удастся размонтировать и /target, но это не страшно.
+
+Если удалось, то делаем так:
+
+umount /target/
+
+Если нет, то так:
+
+sync ; sync ; sync ; mount -o remount,ro /target/
+
+Эти команды сбросят дисковые кеши и перемонтируют корневую файловую систему в read only. После этого можно перегружаться.
+
+Тут-то нас ждет сюрприз от всеми любимого systemd! Он знает, что мы в chroot и не дает перегрузиться! Google дает советы выйти из chroot, но нам-то выходить некуда. Но на помощь приходит Magic SysRq!
+
+Активируем SysRq (он, скорее всего, активирован, но нам же надо убедиться?).
+
+echo 1 > /proc/sys/kernel/sysrq
+
+И перегружаемся:
+
+echo b > /proc/sysrq-trigger
+
+Барабанная дробь, тревожное ожидание, неужели мы что-то забыли, и сервер не поднялся?
+
+ssh 192.168.56.102
+
+Ура! Мы в новой системе!
+
+Пересоздадим initrd. Это не обязательно, но в дальнейшем избавит от некоторых ошибок при перезагрузке:
+
+update-initramfs -u
+
+Удаляем файлик с именем chroot окружения:
+
+rm /etc/debian_chroot
+
+Вот и все.
+
+## The end

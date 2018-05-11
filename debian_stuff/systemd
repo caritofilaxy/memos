@@ -1,0 +1,107 @@
+- start service
+$ sudo systemctl start svcname
+
+- stop service
+$ sudo systemctl stop svcname
+
+- status
+$ sudo systemctl status svcname
+$ sudo journalctl -xe
+
+- restart 
+$ sudo systemctl restart svcname
+
+- reload
+$ sudo systemctl reload svcname
+
+- check if service enabled
+$ sudo systemctl is-enabled svcname.service
+
+- enable service
+$ sudo systemctl enable svcname.service
+$ sudo systemctl daemon-reload
+
+- disable service
+$ sudo systemctl disable svcname.service
+$ sudo systemctl daemon-reload
+
+- list enabled
+$ sudo systemctl list-unit-files | grep enabled
+
+- list running
+$ sudo systemctl | grep running
+
+----------------------------------------
+
+# add to startup
+- Make sure the service has a functional systemd init script located at
+/etc/systemd/system/multi-user.target.wants/svcname.service
+
+- Use the systemctl command to enable the service:
+$ sudo systemctl enable svcname.service
+
+- This should create a symlink in /etc/systemd/system/multi-user.target.wants/ that looks like the following (do NOT create this manually):
+
+lrwxrwxrwx 1 root root 38 Aug  1 04:43 /etc/systemd/system/multi-user.target.wants/svcname.service -> /usr/lib/systemd/system/svcname.service
+
+This will enable automatic starting after a reboot.
+
+- The /etc/systemd/system/multi-user.target.wants/service.service file should also contain a line like Restart=always under the [Service] section of the file to enable the service to respawn after a crash
+- Reload the systemd daemon, followed by a restart of the service:
+
+$ sudo systemctl daemon-reload
+$ sudo systemctl restart svcname.service
+
+# test
+- reboot
+- $ ps -ef | grep svcname
+- $ kill -9 svcname_pid
+
+within a few seconds svcname should be running automatically
+
+----------------------------------------------
+
+https://www.digitalocean.com/community/tutorials/how-to-use-systemctl-to-manage-systemd-services-and-units
+
+https://www.digitalocean.com/community/tutorial_series/how-to-configure-a-linux-service-to-start-automatically-after-a-crash-or-reboot
+https://www.digitalocean.com/community/tutorials/how-to-configure-a-linux-service-to-start-automatically-after-a-crash-or-reboot-part-2-reference
+----------------------------------------------
+
+add program to startup 
+
+put this into /etc/rc.local
+--- cut ---
+#!/bin/sh
+
+/path/to/executable/script
+
+exit 0;
+--- cut ---
+
+chmod 755 /etc/rc.local
+
+
+put this into /etc/systemd/system/rc-local.service
+--- cut ---
+[Unit]
+Description=/etc/rc.local Compatibility
+ConditionFileIsExecutable=/etc/rc.local
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/etc/rc.local
+TimeoutSec=0
+StandardOutput=tty
+RemainAfterExit=yes
+SysVStartPriority=99
+
+[Install]
+WantedBy=multi-user.target
+--- cut ---
+
+systemctl daemon-reload
+systemctl enable rc-local
+reboot
+
+

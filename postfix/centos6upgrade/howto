@@ -1,0 +1,160 @@
+#service postfix stop
+#chkconfig postfix off
+#service dovecot stop
+#chkconfig dovecot off
+
+
+yum -y update
+yum -y install db4-devel gcc gcc-c++ zip unzip perl vim
+WDIR=/root/pfx && mkdir $WDIR && cd $WDIR
+
+
+### install pcre ###
+wget https://ftp.pcre.org/pub/pcre/pcre-8.41.zip && \
+unzip pcre-8.41.zip && \
+cd pcre-8.41 && \
+./configure && \
+make && \
+make install && \
+cd $WDIR
+
+### install openssl ( set -fpic or dovecot will not compile)
+wget https://www.openssl.org/source/openssl-1.0.2n.tar.gz && \
+tar xf openssl-1.0.2n.tar.gz && \
+cd openssl-1.0.2n && \
+export GCCFLAGS="-fpic" && \ 
+export CPPFLAGS="-fpic" && \
+./config && \
+make && \
+make test && \
+make install && \
+cd $WDIR
+
+cd /usr/bin && rm -f openssl && ln -s /usr/local/ssl/bin/openssl openssl && cd $WDIR
+
+
+## install postfix
+wget http://mirror.netinch.com/pub/postfix/postfix-release/official/postfix-3.3.0.tar.gz && \
+tar xf postfix-3.3.0.tar.gz && \
+cd postfix-3.3.0 && \
+make -f Makefile.init shared=no makefiles \
+"CCARGS=-I/usr/local/ssl/include -DUSE_TLS -DUSE_SASL_AUTH -DHAS_PCRE `pcre-config --cflags`" \
+"AUXLIBS_PCRE=`pcre-config --libs`" AUXLIBS="-L/usr/local/ssl/lib -lssl -lcrypto" 
+
+make
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+cd /usr/lib64 && ln -s /usr/local/lib/libpcre.so.1 libpcre.so.1 && cd -
+cd /lib64 && ln -s /usr/local/lib/libpcre.so.1 libpcre.so.1 && cd -
+groupadd postdrop && groupadd postfix && useradd -r -s /bin/nologin -g postfix postfix
+
+echo "export MAIL_CONFIG=/usr/local/postfix/etc" >> ~/.bashrc && . ~/.bashrc
+
+make install install_root=/ tempdir=/root/pfx/postfix-3.3.0 config_directory=/usr/local/postfix/etc \
+command_directory=/usr/local/postfix/sbin daemon_directory=/usr/local/postfix/libexec \
+data_directory=/usr/local/postfix/var/lib html_directory=no mailq_path=/usr/local/postfix/bin/mailq \
+manpage_directory=/usr/local/postfix/man newaliases_path=/usr/local/postfix/bin/newaliases \
+queue_directory=/usr/local/postfix/var/spool readme_directory=no \
+sendmail_path=/usr/local/postfix/sbin/sendmail \
+setgid_group=postdrop shlib_directory=no meta_directory=/usr/local/postfix/etc
+
+groupadd -g 5000 vmail && useradd -r -m -u 5000 -g 5000 vmail
+
+if postfix installed
+    cd /usr/sbin; for i in `ls post*`; do mv $i $i.2.6; ln -s /usr/local/postfix/sbin/$i $i; done
+else 
+    cd /usr/local/postfix/sbin; for i in `ls post*`; do ln -s /usr/local/postfix/sbin/$i /usr/sbin/$i; done
+ 
+### install dovecot 
+cd $WDIR
+wget https://dovecot.org/releases/2.3/dovecot-2.3.0.1.tar.gz && \
+tar xf dovecot-2.3.0.1.tar.gz && \
+cd dovecot-2.3.0.1 && \
+CPPFLAGS=-I/usr/local/ssl/include LDFLAGS=-L/usr/local/ssl/lib ./configure --prefix=/usr/local/dovecot && \
+make && \
+make install
+
+mkdir /var/log/dovecot && touch /var/log/dovecot/{dovecot.log,dovecot-info.log,dovecot-debug.log}
+
+groupadd dovecot && groupadd dovenull
+useradd -r -d /usr/local/dovecot/libexec/dovecot -s /sbin/nologin -g dovenull dovenull
+useradd -r -d /usr/local/dovecot/libexec/dovecot -s /sbin/nologin -g dovecot dovecot
+
+ln -s /usr/local/dovecot/bin/doveadm /usr/bin/doveadm
+
+backup configs
+
+copy configs
+
+cd $MAIL_CONFIG
+
+echo "support@myhappydomain.com		support/" >> vmailbox_table && postmap vmailbox_table
+cd /etc/dovecot 
+echo -n "info:" >> cram-md5.pwd
+doveauth pw -s cram-md5 >> cram-md5.pwd
+
+### install SPF
+yum -y install perl-ExtUtils*
+curl -L https://cpanmin.us | perl - App::cpanminus
+cpanm Mail::SPF
+cpanm Sys::Hostname::Long
+wget https://launchpad.net/postfix-policyd-spf-perl/trunk/release2.010/+download/postfix-policyd-spf-perl-2.010.tar.gz
+tar xf postfix-policyd-spf-perl-2.010.tar.gz
+cd postfix-policyd-spf-perl-2.010
+cp postfix-policyd-spf-perl /usr/local/postfix/bin
+useradd -M -r -s /sbin/nologin -g vmail spf
+
+master.cf:
+policy     unix    -       n       n       -       0       spawn
+        user=spf argv=/usr/local/postfix/bin/postfix-policyd-spf-perl
+
+        main.cf
+        policy_time_limit = 3600
+        smtpd_relay_restrictions =
+            check_policy_service unix:private/policy
+
+
+
+### install DKIM
+https://www.howtoforge.com/#set-up-dkim-domainkeys-identified-mail-working-with-postfix-on-centos-using-opendkim
+https://sourceforge.net/projects/opendkim/
+yum -y install epel-release
+yum -y install libbsd libbsd-devel
+
+useradd -r -U -s /sbin/nologin opendkim
+cd /usr/local/opendkim
+mkdir -p etc/keys
+chown opendkim.opendkim -R etc/
+mkdir etc/keys/myhappydomain.com
+sbin/opendkim-genkey -D etc/keys/myhappydomain.com/ -d myhappydomain.com -s default
+chown -R opendkim.opendkim etc/keys/myhappydomain.com
+mv etc/keys/myhappydomain.com/default.private etc/keys/myhappydomain.com/default
+chkconfig --del sendmail
+
+place content of cat /etc/opendkim/keys/example.com/default.txt to zone file
+
+copy configs
+
+### install spamassassin
+cp -arv /usr/local/ssl/include/openssl /usr/local/include
+cp -arv /usr/local/ssl/lib/* /usr/local/lib/
+yum -y install zlib-devel
+cpanm HTML::Parser Time::HiRes Archive::Tar IO::Zlib
+wget http://apache-mirror.rbc.ru/pub/apache//spamassassin/source/Mail-SpamAssassin-3.4.1.tar.gz
+tar xf Mail-SpamAssassin-3.4.1.tar.gz
+cd Mail-SpamAssassin-3.4.1
+cpanm --installdeps .
+cpanm Geo::IP Net::CIDR::Lite IO::Socket::IP IO::Socket::INET6 IO::Socket::SSL DBI LWP::UserAgent HTTP::Date Encode::Detect::Detector Net::Patricia
+perl Makefile.PL PREFIX=/usr/local/spamassassin DATADIR=/tmp/sa-rules
+make
+make install
+cd /usr/local/spamassassin
+bin/sa-update
+useradd -U -r -s /sbin/nologin -d /usr/local/spamassassin spamfilter
+bin/spamd -d -c -m5 --username spamfilter -H /usr/local/spamassassin -s /usr/local/spamassassin/filter.log
+
+
+>> /etc/rc.local
+/usr/local/dovecot/sbin/dovecot -c /usr/local/dovecot/etc/dovecot/dovecot.conf
+/usr/local/postfix/sbin/postfix -c /usr/local/postfix/etc start
+/usr/local/opendkim/sbin/opendkim -x /usr/local/opendkim/etc/opendkim.conf

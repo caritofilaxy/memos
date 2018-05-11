@@ -1,0 +1,9 @@
+usb_modeswitch
+minicom
+
+sudo minicom -s /dev/ttyUSB*
+
+at
+at^hwver
+...
+

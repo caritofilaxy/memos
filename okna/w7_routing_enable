@@ -1,0 +1,5 @@
+1. Open regedit
+2. Navigate to "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\"
+3. Change IPEnableRouter to 1
+4. Run services->Routing and Remote->start
+(reboot may be nessesary)

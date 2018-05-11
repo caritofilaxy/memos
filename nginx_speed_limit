@@ -1,0 +1,14 @@
+cd destdir
+apt-get source nginx
+git clone https://github.com/yaoweibin/nginx_limit_speed_module.git
+cp -rv nginx_limit_speed_module debian/modules
+dch -n # make changelog
+add "--add-module=$(MODDIR)/nginx_limit_speed_module" to debian/rules
+dpkg-buildpackage -uc -b
+cd ..
+dpkg -i nginx-common nginx-light
+
+# config changes
+add "limit_speed_zone one $binary_remote_addr 1m;" to http section
+add "limit_speed one 100k;" to location section
+

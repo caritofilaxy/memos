@@ -1,0 +1,179 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="shortcut icon" href="/htdocs/favicon.ico">
+<script type="text/javascript" src="/htdocs/bugstatus.js"></script>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+<meta name="robots" content="index,nofollow">
+
+<title>AdvancedBuildingTips - Debian Wiki</title>
+<script type="text/javascript" src="/htdocs/common/js/common.js"></script>
+
+<script type="text/javascript">
+<!--
+var search_hint = "Search";
+//-->
+</script>
+
+
+<link rel="stylesheet" type="text/css" charset="utf-8" media="all" href="/htdocs/debwiki/css/common.css">
+<link rel="stylesheet" type="text/css" charset="utf-8" media="screen" href="/htdocs/debwiki/css/screen.css">
+<link rel="stylesheet" type="text/css" charset="utf-8" media="print" href="/htdocs/debwiki/css/print.css">
+<link rel="stylesheet" type="text/css" charset="utf-8" media="projection" href="/htdocs/debwiki/css/projection.css">
+<link rel="stylesheet" type="text/css" charset="utf-8" media="all" href="/htdocs/debian-wiki-1.0.css">
+
+<!-- css only for MS IE6/IE7 browsers -->
+<!--[if lt IE 8]>
+   <link rel="stylesheet" type="text/css" charset="utf-8" media="all" href="/htdocs/debwiki/css/msie.css">
+<![endif]-->
+
+
+<link rel="alternate" title="Debian Wiki: AdvancedBuildingTips" href="/AdvancedBuildingTips?diffs=1&amp;show_att=1&amp;action=rss_rc&amp;unique=0&amp;page=AdvancedBuildingTips&amp;ddiffs=1" type="application/rss+xml">
+
+
+<link rel="Start" href="/FrontPage">
+<link rel="Alternate" title="Wiki Markup" href="/AdvancedBuildingTips?action=raw">
+<link rel="Alternate" media="print" title="Print View" href="/AdvancedBuildingTips?action=print">
+<link rel="Search" href="/FindPage">
+<link rel="Index" href="/TitleIndex">
+<link rel="Glossary" href="/WordIndex">
+<link rel="Help" href="/HelpOnFormatting">
+</head>
+
+<body  lang="en" dir="ltr">
+<div id="logo"><a href="https://www.debian.org" title="Debian Homepage"><img src="https://www.debian.org/Pics/openlogo-50.png" alt="Debian" width="50" height="61"></a></div>
+<div id="header">
+<div id="wikisection">
+<p class="section"><a href="/FrontPage" title="Debian Wiki Homepage">Wiki</a></p>
+<div id="username"><a href="/AdvancedBuildingTips?action=login" id="login" rel="nofollow">Login</a></div>
+</div>
+<div id="navbar">
+
+<ul id="navibar">
+<li class="wikilink"><a href="/FrontPage">FrontPage</a></li><li class="wikilink"><a href="/RecentChanges">RecentChanges</a></li><li class="wikilink"><a href="/FindPage">FindPage</a></li><li class="wikilink"><a href="/HelpContents">HelpContents</a></li><li class="current"><a href="/AdvancedBuildingTips">AdvancedBuildingTips</a></li>
+</ul>
+
+</div>
+
+<form id="searchform" method="get" action="/AdvancedBuildingTips">
+<div>
+<input type="hidden" name="action" value="fullsearch">
+<input type="hidden" name="context" value="180">
+<label for="searchinput">Search:</label>
+<input id="searchinput" type="text" name="value" value="" size="20"
+    onfocus="searchFocus(this)" onblur="searchBlur(this)"
+    onkeyup="searchChange(this)" onchange="searchChange(this)" alt="Search">
+<input id="titlesearch" name="titlesearch" type="submit"
+    value="Titles" alt="Search Titles">
+<input id="fullsearch" name="fullsearch" type="submit"
+    value="Text" alt="Search Full Text">
+</div>
+</form>
+<script type="text/javascript">
+<!--// Initialize search form
+var f = document.getElementById('searchform');
+f.getElementsByTagName('label')[0].style.display = 'none';
+var e = document.getElementById('searchinput');
+searchChange(e);
+searchBlur(e);
+//-->
+</script>
+
+<div id="logo"><a href="https://www.debian.org" title="Debian Homepage"><img src="https://www.debian.org/Pics/openlogo-50.png" alt="Debian" width="50" height="61"></a></div>
+
+<div id="breadcrumbs"><a href="/FrontPage" title="Debian Wiki Homepage">Wiki</a><span class="sep">/</span>
+
+</div>
+
+<ul class="editbar"><li><a href="/AdvancedBuildingTips?action=login" id="login-1" rel="nofollow">Login</a></li><li class="toggleCommentsButton" style="display:none;"><a href="#" class="nbcomment" onClick="toggleComments();return false;">Comments</a></li><li><a class="nbinfo" href="/AdvancedBuildingTips?action=info" rel="nofollow">Info</a></li><li><a class="nbattachments" href="/AdvancedBuildingTips?action=AttachFile" rel="nofollow">Attachments</a></li><li>
+<form class="actionsmenu" method="GET" action="/AdvancedBuildingTips">
+<div>
+    <label>More Actions:</label>
+    <select name="action"
+        onchange="if ((this.selectedIndex != 0) &&
+                      (this.options[this.selectedIndex].disabled == false)) {
+                this.form.submit();
+            }
+            this.selectedIndex = 0;">
+        <option value="raw">Raw Text</option>
+<option value="print">Print View</option>
+<option value="RenderAsDocbook">Render as Docbook</option>
+<option value="refresh">Delete Cache</option>
+<option value="show" disabled class="disabled">------------------------</option>
+<option value="SpellCheck">Check Spelling</option>
+<option value="LikePages">Like Pages</option>
+<option value="LocalSiteMap">Local Site Map</option>
+<option value="show" disabled class="disabled">------------------------</option>
+<option value="RenamePage" disabled class="disabled">Rename Page</option>
+<option value="DeletePage" disabled class="disabled">Delete Page</option>
+<option value="show" disabled class="disabled">------------------------</option>
+<option value="show" disabled class="disabled">Subscribe User</option>
+<option value="show" disabled class="disabled">------------------------</option>
+<option value="show" disabled class="disabled">Remove Spam</option>
+<option value="show" disabled class="disabled">Revert to this revision</option>
+<option value="PackagePages">Package Pages</option>
+<option value="show" disabled class="disabled">------------------------</option>
+<option value="Load">Load</option>
+<option value="Save">Save</option>
+<option value="SlideShow">SlideShow</option>
+    </select>
+    <input type="submit" value="Do">
+    
+</div>
+<script type="text/javascript">
+<!--// Init menu
+actionsMenuInit('More Actions:');
+//-->
+</script>
+</form>
+</li></ul>
+
+<h1 id="locationline">
+
+
+<ul id="pagelocation">
+<li><a href="/AdvancedBuildingTips">AdvancedBuildingTips</a></li>
+</ul>
+
+</h1>
+</div>
+
+<div id="page" lang="en" dir="ltr">
+<div dir="ltr" id="content" lang="en"><span class="anchor" id="top"></span>
+<span class="anchor" id="line-1"></span><span class="anchor" id="line-2"></span><span class="anchor" id="line-3"></span><p class="line867"><small><a href="/DebianWiki/EditorGuide#translation">Translation(s)</a>: English - <a href="/it/AdvancedBuildingTips">Italiano</a> - <a href="/pt_BR/AdvancedBuildingTips">Português Brasileiro</a></small> <span class="anchor" id="line-4"></span><hr /><p class="line874"> <span class="anchor" id="line-5"></span><span class="anchor" id="line-6"></span><span class="anchor" id="line-7"></span><p class="line862">Once you've downloaded, modified and built a Debian package, you usually feel that you could keep doing it, since <strong>it's so easy</strong>. <span class="anchor" id="line-8"></span><span class="anchor" id="line-9"></span><p class="line862">And it's just like that, but even if the <a href="/BuildingTutorial">BuildingTutorial</a> is a good introduction to modifying Debian packages, there were some things that were left out on purpose, to keep it simple.  So, here you'll find some extra tips to take full advantage of some  of the many Debian tools. <span class="anchor" id="line-10"></span><span class="anchor" id="line-11"></span><p class="line867">
+<h2 id="Useful_packages">Useful packages</h2>
+<span class="anchor" id="line-12"></span><span class="anchor" id="line-13"></span><p class="line874">Although they might not be build dependencies, there's a bunch of useful packages that anyone interested in helping Debian development should have installed: <span class="anchor" id="line-14"></span><ul><li><p class="line891"><strong>build-essential</strong>: includes the essential packages for building your own ones, this is probably already installed in your system, but it never hurts to check. <span class="anchor" id="line-15"></span></li><li><p class="line891"><strong>devscripts</strong>: lots of useful scripts for Debian Development (including: dch, debuild, uscan, uupdate and many others). <span class="anchor" id="line-16"></span></li><li><p class="line891"><strong>lintian</strong>: package checker, that verify the built package is in good shape regarding Debian Policy. <span class="anchor" id="line-17"></span></li><li><p class="line891"><strong>diff</strong>, <strong>patch</strong> and <strong>patchutils</strong>: utilities for working with patches. <span class="anchor" id="line-18"></span><span class="anchor" id="line-19"></span></li></ul><p class="line874">And here's a useful command line, to copy and paste: <span class="anchor" id="line-20"></span><span class="anchor" id="line-21"></span><span class="anchor" id="line-22"></span><pre><span class="anchor" id="line-1"></span>  apt-get install build-essential devscripts lintian diffutils patch patchutils</pre><span class="anchor" id="line-23"></span><span class="anchor" id="line-24"></span><p class="line867">
+<h2 id="Using_the_changelog">Using the changelog</h2>
+<span class="anchor" id="line-25"></span><span class="anchor" id="line-26"></span><p class="line862">The <tt class="backtick">debian/changelog</tt> file is one of the important files in the <tt class="backtick">debian</tt> directory.  Let's take one changelog entry as an example: <span class="anchor" id="line-27"></span><span class="anchor" id="line-28"></span><span class="anchor" id="line-29"></span><span class="anchor" id="line-30"></span><span class="anchor" id="line-31"></span><span class="anchor" id="line-32"></span><span class="anchor" id="line-33"></span><span class="anchor" id="line-34"></span><span class="anchor" id="line-35"></span><span class="anchor" id="line-36"></span><span class="anchor" id="line-37"></span><pre><span class="anchor" id="line-1-1"></span>control-center (1:2.8.1-3) unstable; urgency=low
+<span class="anchor" id="line-2"></span> * debian/rules:
+<span class="anchor" id="line-3"></span>   - Corrected erroneous line responsible for not including the .desktop
+<span class="anchor" id="line-4"></span>     files (Closes: #274401)
+<span class="anchor" id="line-5"></span> * debian/patches:
+<span class="anchor" id="line-6"></span>   - Suppressed 'Text Editor' in the &quot;preferred applications&quot; as it's useless
+<span class="anchor" id="line-7"></span>     with the new mime type system.
+<span class="anchor" id="line-8"></span> -- Arnaud Patard &lt;arnaud.patard@rtp-net.org&gt;  Thu, 25 Nov 2004 21:16:04 +0100</pre><span class="anchor" id="line-38"></span><span class="anchor" id="line-39"></span><p class="line874">There are many things to notice in this entry: in the first line you have the name and version of the source package, also the distribution to which it is initially uploaded to (unstable), and the urgency level (this is used by Debian bots to determine when the package is ready to enter testing). <span class="anchor" id="line-40"></span><span class="anchor" id="line-41"></span><p class="line862">Then, we have a bulleted list with the files that were changed and a very brief summary of the reasons for the changes.  Note the <a class="interwiki" href="https://bugs.debian.org/274401" title="DebianBug">274401</a>, this is used by Debian bugs bot to automatically close bugs. <span class="anchor" id="line-42"></span><span class="anchor" id="line-43"></span><p class="line874">Finally, we can see the name and email of the last person to change the package and the date on which it was changed. <span class="anchor" id="line-44"></span><span class="anchor" id="line-45"></span><p class="line862">Now, to edit the changelog, if you have installed <strong>devscripts</strong> you'll have a nifty command <tt class="backtick">dch</tt> that prefills a lot of this information and opens your preferred editor.  Although you can edit everything manually if you want, I recommend using <tt class="backtick">dch</tt>. <span class="anchor" id="line-46"></span><span class="anchor" id="line-47"></span><p class="line867"><strong>Important</strong>: when you first start modifying a package, you'll want to make a new version of it, so that you can differentiate it from the original one.  So, the first time you are about to edit a changelog entry, you should do <span class="anchor" id="line-48"></span><span class="anchor" id="line-49"></span><span class="anchor" id="line-50"></span><pre><span class="anchor" id="line-1-2"></span>  dch -i</pre><span class="anchor" id="line-51"></span><p class="line862">This will add a whole new entry, incrementing the version number and letting you write which files you modified.  After that, you can always add more info about your changes by just using <tt class="backtick">dch</tt>. <span class="anchor" id="line-52"></span><span class="anchor" id="line-53"></span><p class="line867">
+<h2 id="Building_the_source_package">Building the source package</h2>
+<span class="anchor" id="line-54"></span><span class="anchor" id="line-55"></span><p class="line862">When you do <tt class="backtick">debian/rules&nbsp;binary</tt> you just build the binary package, the one that you want to install on your system.  But in many cases you want to also build the source package (which is actually composed of three files: package_version.orig.tar.gz, package_version.diff.gz and package_version.dsc). <span class="anchor" id="line-56"></span><span class="anchor" id="line-57"></span><p class="line862">To do this there are lots of tools.  Here, we'll be using <tt class="backtick">dpkg-buildpackage</tt> that comes with the <strong>dpkg-dev</strong> package (part of <strong>build-essential</strong>). <span class="anchor" id="line-58"></span><span class="anchor" id="line-59"></span><p class="line874">Provided you already modified the package and the package's changelog, you'll build it by doing: <span class="anchor" id="line-60"></span><span class="anchor" id="line-61"></span><span class="anchor" id="line-62"></span><pre><span class="anchor" id="line-1-3"></span>   dpkg-buildpackage -rfakeroot</pre><span class="anchor" id="line-63"></span><p class="line862">(There are many option to pass to <tt class="backtick">dpkg-buildpackage</tt>, <tt class="backtick">-S</tt> for example, will only build the source package, <tt class="backtick">-tc</tt> will clean the compiled files after making the package, etc.  See <tt class="backtick">man&nbsp;dpkg-buildpackage</tt> for more info) <span class="anchor" id="line-64"></span><span class="anchor" id="line-65"></span><p class="line874">Once you've done this, you'll find a new trio of files in your parent directory, that will have almost the same name as the ones you downloaded but with a change in the version number. <span class="anchor" id="line-66"></span><span class="anchor" id="line-67"></span><p class="line867">
+<h2 id="Using_interdiff">Using interdiff</h2>
+<span class="anchor" id="line-68"></span><span class="anchor" id="line-69"></span><p class="line874">If you've built a package, incremented the version number in the changelog file, and now you have two sets of three files (two source packages) you can gather what the changes between versions were very easily by using interdiff: <span class="anchor" id="line-70"></span><span class="anchor" id="line-71"></span><span class="anchor" id="line-72"></span><pre><span class="anchor" id="line-1-4"></span>   interdiff -z package_oldversion.diff.gz package_newversion.diff.gz &gt; your.patch</pre><span class="anchor" id="line-73"></span><span class="anchor" id="line-74"></span><p class="line862">After running this command you can inspect the contents of <tt class="backtick">your.patch</tt>, it should contain everything that you changed to the package.  If you are solving a bug in the Debian BTS, this is what you should send to the bug number. <span class="anchor" id="line-75"></span><span class="anchor" id="line-76"></span><p class="line874">Note that interdiff only makes sense when you haven't changed the upstream source (this is to say, the package_version.orig.tar.gz has to be the same). <span class="anchor" id="line-77"></span><span class="anchor" id="line-78"></span><p class="line867">
+<h2 id="Using_lintian">Using lintian</h2>
+<span class="anchor" id="line-79"></span><span class="anchor" id="line-80"></span><p class="line874">Not all Debian packages comply perfectly with Debian's policy.  Sometimes this is due to the policy getting quickly updated, sometimes this is because of lack of time from the maintainer, sometimes because it's not easy for certain software to be totally compliant. <span class="anchor" id="line-81"></span><span class="anchor" id="line-82"></span><p class="line862">In any case, these tools provide us with an easy way to find problems in Debian packages. Using them is easy: you just run them against the <tt class="backtick">.diff.gz</tt> and <tt class="backtick">.dsc</tt> files of your source package. <span class="anchor" id="line-83"></span><span class="anchor" id="line-84"></span><p class="line874">Depending on the package, you could get no messages, some messages or a lot of messages.  These messages are usually brief and not always will you know what they mean, but many times they'll point you to the problematic part of the package. <span class="anchor" id="line-85"></span><span class="anchor" id="line-86"></span><p class="line862">Of course, these tools are just an aid, not a replacement to <strong>actually reading</strong> Debian's policy. <span class="anchor" id="line-87"></span><span class="anchor" id="line-88"></span><p class="line867">
+<h2 id="Getting_help">Getting help</h2>
+<span class="anchor" id="line-89"></span><span class="anchor" id="line-90"></span><p class="line874">If you get stuck in what you are doing, there's lots of places where you can get help. <span class="anchor" id="line-91"></span><ul><li><p class="line862">You can go to the <a class="http" href="http://www.debian.org/devel/">Debian Developer's corner</a> where you can find lots of information online. <span class="anchor" id="line-92"></span></li><li><p class="line862">You can ask online at <tt class="backtick">irc.debian.org</tt> (OFTC), on <tt class="backtick">#debian-women</tt>, <tt class="backtick">#debian-mentors</tt>, <tt class="backtick">#debian-bugs</tt> or <tt class="backtick">#debian-devel</tt> (choose the one that is closer to what you are doing). <span class="anchor" id="line-93"></span></li><li><p class="line862">Or you can ask on one of the many <a class="http" href="http://www.debian.org/MailingLists/">Debian Mailing Lists</a>. <span class="anchor" id="line-94"></span></li></ul><span class="anchor" id="bottom"></span></div><div id="pagebottom"></div>
+</div>
+
+
+<div id="footer">
+<p id="pageinfo" class="info" lang="en" dir="ltr">AdvancedBuildingTips  (<a class="nbinfo" href="/AdvancedBuildingTips?action=info" rel="nofollow">last modified 2016-09-21 13:44:36</a>)</p>
+
+<ul id="credits">
+<li><a href="https://moinmo.in/" title="This site uses the MoinMoin Wiki software.">MoinMoin Powered</a></li><li><a href="https://moinmo.in/Python" title="MoinMoin is written in Python.">Python Powered</a></li><li>Debian Wiki <a href="/Teams/DebianWiki">team</a>, <a href="https://bugs.debian.org/wiki.debian.org">bugs</a> and <a href="https://git.debian.org/?p=collab-maint/wiki.debian.org.git;a=summary">config</a> available.</li><li>Hosting provided by <a href="https://www.man-da.de/">Metropolitan Area Network Darmstadt</a></li>
+</ul>
+
+
+</div>
+</body>
+</html>
+

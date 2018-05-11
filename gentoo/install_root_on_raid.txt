@@ -1,0 +1,38 @@
+1. boot minimal
+2. sda1 - 128M
+   sda2 - 1024M
+   sda3 - rest
+   type - fd
+3. sfdisk -d /dev/sda | sfdisk /dev/sdb	
+4. mdadm --create /dev/md1 --level=1 --raid-devices=2 --metadata=0.90 /dev/sda1 /dev/sdb1
+   mdadm --create /dev/md2 --level=1 --raid-devices=2 --metadata=0.90 /dev/sda2 /dev/sdb2
+   mdadm --create /dev/md3 --level=1 --raid-devices=2 --metadata=0.90 /dev/sda3 /dev/sdb3
+5. mkfs.ext2 /dev/md1 /dev/md3
+6. mkswap /dev/md2 && swapon /dev/md2
+7. mount /dev/md3 /mnt/gentoo
+8. mount /dev/md1 /mnt/gentoo/boot
+
+during installation 
+add raid to kernel
+specify /dev/mdX in /etc/fstab
+emerge mdadm when chroot
+mdadm --detail --scan > /etc/mdadm.conf
+
+grub-install /dev/sda /dev/sdb
+
+######################################################
+replace drive /dev/sda
+1. for i in "1 2 3"; do mdadm /dev/md$i --fail /dev/sda$i --remove /dev/sda$i; sleep 1; done
+2. halt station
+3. replace drive
+4. boot from good drive on "one wing"
+5. sfdisk -d /dev/sdb | sfdisk /dev/sda
+6. for i in "1 2 3"; do mdadm /dev/md$i --add /dev/sda$i; sleep 1; done
+7. watch cat /proc/mdstat until sync;
+8. mdadm --detail --scan > /etc/mdadm.conf
+9. mount /boot
+10 grub-mkconfig -o /boot/grub/grub.cfg
+11. grub-install /dev/sda
+12. reboot from new drive
+
+	

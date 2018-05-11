@@ -1,0 +1,10 @@
+custum kernel from debian kernel src
+# apt-get install build-essentials libncurses5-dev linux-sources-4.3
+# tar xf /usr/src/linux-sources-4.3.tar.gz
+# cd linux-sources-4.3
+# make nconfig
+# scripts/config --disable DEBUG_INFO
+# make clean
+# make deb-pkg
+# dpkg -i linux.deb
+# shutdown -r now

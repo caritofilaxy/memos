@@ -1,0 +1,2 @@
+default._domainkey	IN	TXT	( "v=DKIM1; k=rsa; "
+	  "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCqHTbZ38m0g5J60qB03AGIvAbSAytEABCHC3xiYaFHJ0O1SRgON6Jb6tEiUMOMyDFDE2ujEVwKpQrnB0fafOr72tcMxAvBZgrdM1PEhxqIMJuN0EUNETWIplKwNaFSuW9nwnEU6uQr8sUhUCiwExclC+dbtEXKhKOuQrHUporZLwIDAQAB" )  ; ----- DKIM key default for myhappydomain.com

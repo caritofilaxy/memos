@@ -1,0 +1,13 @@
+https://answers.microsoft.com/en-us/windows/forum/windows_xp-security/remote-desktop-xp-sp3-idle-timeout/1a6c98ce-a29e-4e25-b557-e3da868a76a5?auth=1
+
+If a Remote Desktop session to an XP SP3 machine running under Active Directory is idle for 15 minutes the following 2-minute warning prompt is issued:
+
+Session has been idle over its time limit. Logoff will start in 2 minutes. Press any key now to continue session.
+
+I have looked for a setting in the group policies and only found one with a 15-minute timeout. I changed it in Active directory and can see that the policy did change on the remote XP session but I am still getting the timeout. I have also checked the registry for timeouts of 15 minutes or 900 seconds and could not find anything, Does anyone know what setting could be responsible for this session timeout?
+
+I was able to fix this in the registry. I finally found this entry:
+
+HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\terminal services\MaxIdleTime
+
+It was set to 900,000 mSec. or 15-minutes. I increased the value to 10,800,000 or 3-hours.

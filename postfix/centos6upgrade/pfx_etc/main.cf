@@ -1,0 +1,95 @@
+biff = no
+queue_directory = /usr/local/postfix/var/spool
+command_directory = /usr/local/postfix/sbin
+daemon_directory = /usr/local/postfix/libexec
+data_directory = /usr/local/postfix/var/lib
+mail_owner = postfix
+inet_protocols = ipv4
+myorigin = $mydomain
+mydestination = $myhostname, localhost.$mydomain, localhost
+unknown_local_recipient_reject_code = 550
+#alias_maps = hash:/usr/local/posftix/etc/aliases
+#alias_database = hash:/usr/local/postfix/etc/aliases
+mail_name = SL Daemon
+smtpd_banner = $mail_name. All Spam Is Reported. ESMTP
+luser_relay = 
+allow_percent_hack = no
+swap_bangpath = no 
+debugger_command =
+	 PATH=/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+	 ddd $daemon_directory/$process_name $process_id & sleep 5
+sendmail_path = /usr/local/postfix/sbin/sendmail
+newaliases_path = /usr/local/postfix/bin/newaliases
+mailq_path = /usr/local/postfix/bin/mailq
+setgid_group = postdrop
+html_directory = no
+manpage_directory = /usr/local/postfix/man
+#sample_directory = /usr/share/doc/postfix-2.6.6/samples
+#readme_directory = /usr/share/doc/postfix-2.6.6/README_FILES
+meta_directory = /usr/local/postfix/etc
+shlib_directory = no
+compatibility_level = 2
+config_directory = /usr/local/postfix/etc
+mynetworks = 127.0.0.1
+mailbox_command =
+smtpd_helo_required = yes
+broken_sasl_auth_clients = yes
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+virtual_mailbox_domains = myhappydomain.com
+virtual_mailbox_base = /home/vmail
+virtual_mailbox_maps = hash:$config_directory/vmailbox_table
+virtual_minimum_uid = 500
+virtual_uid_maps = static:5000
+virtual_gid_maps = static:5000
+virtual_alias_maps = hash:$config_directory/alias_table
+
+header_checks = pcre:$config_directory/headers_table
+
+policy_time_limit = 3600
+
+smtpd_milters           = inet:127.0.0.1:8891
+non_smtpd_milters       = $smtpd_milters
+milter_default_action   = accept
+milter_protocol         = 2
+
+
+
+smtpd_client_restrictions =
+	permit_mynetworks,
+	permit_sasl_authenticated,
+	check_client_access pcre:$config_directory/client_access_table,
+	reject_unauth_pipelining,
+	reject_unknown_client_hostname,
+	reject_unknown_reverse_client_hostname
+	reject_unauth_pipelining
+	permit
+
+smtpd_helo_restrictions =
+	permit_mynetworks,
+	check_helo_access pcre:$config_directory/helo_access_table,
+	check_helo_mx_access pcre:$config_directory/helo_mx_access_table,
+	reject_invalid_helo_hostname,
+	reject_non_fqdn_helo_hostname
+	reject_unknown_helo_hostname,
+	permit
+
+smtpd_sender_restrictions =
+	check_sender_access pcre:$config_directory/sender_access_table,
+	reject_non_fqdn_sender,
+	reject_unknown_sender_domain,
+	reject_unknown_address,
+	permit
+	
+smtpd_relay_restrictions =
+	permit_mynetworks,
+	permit_sasl_authenticated,
+	reject_unauth_destination,
+	check_policy_service unix:private/spf
+
+smtpd_recipient_restrictions =
+	check_recipient_access pcre:$config_directory/rcpt_access_table
+	reject_non_fqdn_recipient,
+	reject_unknown_recipient_domain,
+	permit

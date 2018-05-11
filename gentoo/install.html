@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>Installation</title>
+</head>
+<body>
+		<h1>Installation</h1>
+		<h2>getting files</h2>
+		<li>#wget http://mirror.yandex.ru/gentoo-distfiles/releases/x86/autobuilds/current-install-x86-minimal/install-x86-minimal-20170214.iso</li>
+		<li>#wget http://mirror.yandex.ru/gentoo-distfiles/releases/x86/autobuilds/current-install-x86-minimal/stage3-i686-20170214.tar.bz2</li>
+
+		<h2>partitioning</h2>
+		<li>#cfdisk /dev/sda</li>
+		<li>Create three partitions. 128MB for /boot, 1024MB for swap, and the rest for /</li>
+		<li>#mkfs.ext4 /dev/sda1</li>
+		<li>#mkfs.ext4 /dev/sda3</li>
+		<li>mkswap /dev/sda2 && swapon /dev/sda2</li>
+		<li>#mount /dev/sda3 /mnt/gentoo</li>
+		<li>#mkdir /mnt/gentoo/boot</li>
+		<li>#mount /dev/sda1 /mnt/gentoo/boot</li>
+	
+		<h2>stage3</h2>
+		<li>#cp stage3* /mnt/gentoo</li>
+		<li>#tar xvjpf stage3-*.tar.bz2 --xattrs --numeric-owner</li>
+
+		<h2>configure compile options in make.conf</h2>
+		<li>CFLAGS="-march=${arch} -O2 -pipe"</li>
+		<li>MAKEOPTS="-j${cores_number}"</li>
+	
+		<h2>mirror select</h2>
+		<li>#mirrorselect -i -o >> /mnt/gentoo/etc/portage/make.conf</li>
+		<li>#mkdir /mnt/gentoo/etc/portage/repos.conf</li>
+		<li>#cp /mnt/gentoo/usr/share/portage/config/repos.conf /mnt/gentoo/etc/portage/repos.conf/gentoo.conf</li>
+		<li>in gentoo.conf</li>
+		<li>sync-type = rsync</li>
+		<li>sync-uri = rsync://mirror.yandex.ru/gentoo-portage</li>
+
+		<h2>copy dns</h2>
+		<li>#cp -L /etc/resolv.conf /mnt/gentoo/etc</li>
+	
+		<h2>mount pseudo partitions</h2>
+		<li>#mount -t proc /proc /mnt/gentoo/proc</li>
+		<li>#mount --rbind /dev /mnt/gentoo/dev</li>
+		<li>#mount --rbind /sys /mnt/gentoo/sys</li>
+
+		<h2>chrooting</h2>
+		<li>#chroot /mnt/gentoo /bin/bash</li>
+		<li>#. /etc/profile</li>
+		<li>#export PS1="(chroot) $PS1"</li>
+
+		<h2>portage</h2>
+		<li>#emerge-webrsync</li>
+
+		<h2>configure USE flags in make.conf</h2>
+		<li><pre>USE="-X -ipv6 -systemd -alsa -3dfx -Xaw3d -a52 -aac -aalib -afs -aim -altivec -ao -aqua -avahi -ayatana \
+-bluetooth -cairo -canna -cdda -cdinstall -cdparanoia -cdr -cjk -coreaudio -css -dvb -dvd -dvdr -eds \
+-evo -ffmpeg -fftw -flac -foomaticdb -fortran -freewnn -gnome -gnome-keyring -gnuplot -graphviz -gsm -gtk \
+-ibm -icq -ieee1394 -infiniband -ios -ipod -iwmmxt -jack -jingle -joystick -kde -kontact -lash -mbox -mp3 \
+-mp4 -mpeg -msn -mtp -mule -musepack -musicbrainz -nas -neon -networkmanager -ogg -openal -openexr \
+-opengl -openmp -oracle -osc  -oscar -oss -pcmcia -plasma -portaudio -pulseaudio -qt4 -qt5 -quicktime \
+-radius -rdp -rss -scanner -seamonkey -semantic-desktop -shorten -smartcard -sound -speex -vcd -videos \
+-vorbis -wifi -yahoo -zeroconf bindist"</pre></li>
+
+		<li>#less /usr/portage/profiles/use.desc</li>
+
+		<h2>timezone</h2>
+		<li>#echo "Europe/Brussels" > /etc/timezone</li>
+		<li>#emerge --config sys-libs/timezone-data</li>
+
+		<h2>locales</h2>
+		<li>#nano -w /etc/locale.gen</li>
+		<li>en_US.UTF-8</li>
+		<li>#locale-gen</li>
+		<li>#eselect locale list</li>
+		<li>#eselect locale set #</li>
+		<li>#env-update && source /etc/profile && export PS1="(chroot) $PS1"</li>
+		
+		<h2>kernel</h2>
+		<li>#emerge --ask sys-kernel/gentoo-sources</li>
+		<li>#cd /usr/src/linux</li>
+		<li>make nconfig</li>
+		<li>make && make modules_install && make_install</li>
+		<li><a href=initramfs.html>initramfs</a></li>
+		<h3>modules</h3>
+		<li>#find /lib/modules/`uname -r` -type f -iname '*.o' -or -iname '*.ko' | less</li>
+		<li>#nano -w /etc/conf.d/modules</li>	
+
+		<h2>configure</h2>
+		<li>/etc/fstab</li>
+		<h3>network</h3>
+		<li>#nano -w /etc/conf.d/hostname</li>
+		<li>#emerge --ask --noreplace net-misc/netifrc</li>
+		<li>#nano -w /etc/conf.d/net</li>
+		<li>config_eth0="dhcp"</li>
+		<li>#cd /etc/init.d</li>
+		<li>#ln -s net.lo net.eth0</li>
+		<li>#rc-update add net.eth0 default</li>
+		<br>
+		<li>#passwd</li>
+		<li>#nano -w /etc/rc.conf</li>
+		<li>#nano -w /etc/conf.d/keymaps</li>
+		<li>#nano -w /etc/conf.d/hwclock</li>
+		
+			
+		<h2>install tools</h2>
+		<li>#emerge app-admin/syslog-ng && rc-update add syslog-ng default</li>
+		<li>#emerge sys-process/vixie-cron && rc-update add vixie-cron default</li>
+		<li>#rc-update add sshd default</li>
+		<li>#emerge sys-fs/e2fsprogs</li>
+		<li>#emerge net-misc/dhcpcd</li>
+
+		<h2>bootloader</h2>
+		<li>#emerge --ask --verbose sys-boot/grub</li>
+		<li>#grub-install /dev/sda</li>
+		<li>#grub-mkconfig -o /boot/grub/grub.cfg</li>
+
+		<h2>unmount and reboot</h2>
+		<li>#exit</li>
+		<li>#cd</li>
+		<li>#umount -l /mnt/gentoo/dev{/shm,/pts,}</li>
+		<li>#umount -R /mnt/gentoo</li>
+		<li>#reboot</li>
+
+		<h2>finalizing</h2>
+		<li>#useradd -m -G users,wheel,audio -s /bin/bash larry</li>
+		<li>#rm /stage3*</li>
+
+</body>
+</html>

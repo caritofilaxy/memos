@@ -1,0 +1,51 @@
+1. Create a new RAID array
+mdadm --create --verbose /dev/md0 --level=1 /dev/sda1 /dev/sdb2
+mdadm -Cv /dev/md0 -l1 -n2 /dev/sd[ab]1
+
+2. /etc/mdadm.conf
+mdadm --detail --scan >> /etc/mdadm.conf
+mdadm --detail --scan >> /etc/mdadm/mdadm.conf (debian)
+
+3. Remove a disk from an array
+
+mdadm --fail /dev/md0 /dev/sda1 && mdadm --remove /dev/md0 /dev/sda1
+mdadm /dev/md0 --fail /dev/sda1 --remove /dev/sda1
+
+4. Shutdown and replace failed drive
+
+5. Copy partition table to new drive
+sfdisk -d /dev/sdb | sfdisk /dev/sda
+
+4. Add a disk to an existing array
+mdadm --add /dev/md0 /dev/sda1
+
+5. Verify the status of the RAID arrays
+cat /proc/mdstat
+mdadm --detail /dev/md0
+
+6. Stop and delete a RAID array
+mdadm --stop /dev/md0
+mdadm --remove /dev/md0
+??? mdadm --zero-superblock /dev/sda
+
+
+## Scenario where system installed on SW raid with
+## md0 = /dev/sda1, /dev/sdb1 = /boot
+## /dev/sda2, /dev/sdb2 = swap
+## md1 = /dev/sda3, /dev/sdb3 = root
+## and /dev/sda failed.
+
+# mdadm --fail /dev/md0 /dev/sda1 --remove /dev/sda1
+# mdadm --fail /dev/md1 /dev/sda3 --remove /dev/sda3
+## comment swap UUID for failed drive in /etc/fstab
+# shutdown -h now
+## replace failed drive
+# sfdisk -d /dev/sdb | sfdisk /dev/sda
+# mdadm --add /dev/md0 /dev/sda1
+# mdadm --add /dev/md1 /dev/sda3
+# watch -n1 cat /proc/mdstat 
+# mkswap /dev/sda2 
+## Update UUID for swap
+# swapon /dev/sda2
+# grub-install /dev/sda
+## reboot and mdadm --detail /dev/md0 /dev/md1	

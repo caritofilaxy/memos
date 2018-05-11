@@ -1,0 +1,13 @@
+- generate keys.
+- Conversions export private key
+- scp pk to target
+- ssh-keygen -e -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+- ssh-keygen -i -f ~/.ssh/id_dsa_com.pub > ~/.ssh/authorized_keys
+- chmod 600 authorized_keys
+
+- useradd -m -s /use/local/bin/welcome_message username
+- passwd username 
+- usermod -U username
+- copy usernames home from origin to new 
+- chown home if needed
+- 

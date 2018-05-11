@@ -1,0 +1,4 @@
+x11-xserver-utils
+
+xset s off
+xset -dpms

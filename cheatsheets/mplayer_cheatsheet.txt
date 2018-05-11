@@ -1,0 +1,8 @@
+Volume 9 0
+speed +10% [ ]
++10s left right
++1min up down
+P show time
+<>	prev/next item in playlist
+
+mplayer --xy=2      scale by 2

@@ -1,0 +1,15 @@
+# example for atbitrary site
+
+set imap_user = "user2"                       
+set imap_pass = "password"                                    
+set smtp_url = "smtp://user2@domain.com:25/"       
+set smtp_pass = "password"                                    
+set from = "user2@domain.com"                            
+set realname = "user2 the humble"
+set folder = "imap://mail.domain.com:143"                     
+set spoolfile = "+INBOX"                                      
+set postponed = "+Drafts"                             
+set header_cache = ~/.mutt/user2_data/cache/headers            
+set message_cachedir = ~/.mutt/user2_data/cache/bodies         
+set record = "+Sent"
+

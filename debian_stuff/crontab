@@ -1,0 +1,5 @@
+- run every minute
+*/1 * * * * /path/to/exec
+
+- run every hour
+* */1 * * * /path/to/exec

@@ -1,0 +1,19 @@
+replace drive /dev/sda
+-- disable swap (if any) on failed drive
+0. mdadm /dev/mdX --fail /dev/sdaY
+1. mdadm /dev/mdX --remove /dev/sdaY
+2. halt station
+3. replace drive
+4. boot from good drive on "one wing"
+5. sfdisk -d /dev/sdb | sfdisk /dev/sda
+6. mdadm /dev/mdX --add /dev/sdaY
+-- if message device is busy appeared, check /proc/mdstat. if there is something like md127, exec mdadm -S /dev/md127 and add again
+7. watch cat /proc/mdstat until synced
+-- enable swap, replace uuid in /etc/fstab
+8. mdadm --detail --scan > /etc/mdadm.conf
+9. mount /boot unless true
+10 grub-mkconfig -o /boot/grub/grub.cfg
+11. grub-install /dev/sda
+12. reboot from new drive
+
+#################

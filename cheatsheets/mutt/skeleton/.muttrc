@@ -1,0 +1,31 @@
+set sort = date
+set index_format = "|%4C|%3Z|%20[%F %T] | %-45.45s | %-30.30a | %t "
+set followup_to = yes
+#set pager = less
+
+# forward with attachment
+#set mime_forward
+#set mime_forward_rest=yes
+
+# hooks
+#folder-hook 'admin' 'source ~/.mutt/sl_admin/acct'
+#folder-hook 'tech' 'source ~/.mutt/sl_tech/acct'
+#folder-hook 'durak' 'source ~/.mutt/sl_durak/acct'
+
+# macros for switching accounts
+macro index <f1> '<sync-mailbox><enter-command>source ~/.mutt/admin_sl/acct<enter><change-folder>!<enter>'
+macro index <f2> '<sync-mailbox><enter-command>source ~/.mutt/tech_sl/acct<enter><change-folder>!<enter>'
+macro index <f3> '<sync-mailbox><enter-command>source ~/.mutt/durak_sl/acct<enter><change-folder>!<enter>'
+
+
+# default account
+source ~/.mutt/admin_sl/acct
+#source ~/.mutt/tech_sl/acct
+#source ~/.mutt/durak_sl/acct
+
+
+# fetch mail shortcut
+bind index G imap-fetch-mail
+
+bind pager k previous-line
+bind pager j next-line

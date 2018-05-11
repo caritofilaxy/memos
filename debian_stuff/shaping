@@ -1,0 +1,387 @@
+#!/bin/sh
+
+# all this stuff apply to outgoig traffic so if you want to manage bandwidth for downloaders
+
+tcb=/sbin/tc
+
+extif=enp4s0
+intif=enp3s0
+
+##outgoing (uploading)
+#$tcb qdisc del dev $extif root handle 1:
+#$tcb qdisc add dev $extif root handle 1: htb default 20
+#
+#$tcb class add dev $extif parent 1: classid 1:1 htb rate 1mbps
+#$tcb class add dev $extif parent 1: classid 1:10 htb rate 128kbps ceil 128kbps
+#$tcb class add dev $extif parent 1: classid 1:20 htb rate 756kbps ceil 1mbps
+#
+#$tcb filter add dev $extif parent 1: protocol ip prio 1 u32 \
+#                       match ip dst 0.0.0.0/0 \
+#                       match ip dport 80 0xffff \
+#                       flowid 1:10
+#
+#$tcb filter add dev $extif parent 1: protocol ip prio 1 u32 \
+#                       match ip dst 0.0.0.0/0 \
+#                       match ip dport 443 0xffff \
+#                       flowid 1:10
+#
+##incoming (download)
+#$tcb qdisc del dev $intif root handle 1:
+#$tcb qdisc add dev $intif root handle 1: htb default 20
+#
+#$tcb class add dev $intif parent 1: classid 1:1 htb rate 1mbps
+#$tcb class add dev $intif parent 1: classid 1:10 htb rate 128kbps ceil 128kbps
+#$tcb class add dev $intif parent 1: classid 1:20 htb rate 756kbps ceil 1mbps
+#
+#$tcb filter add dev $intif parent 1: protocol ip prio 1 u32 \
+#                       match ip dst 192.168.12.128/25 \
+#                       match ip sport 80 0xffff \
+#                       flowid 1:10u
+#
+#$tcb filter add dev $intif parent 1: protocol ip prio 1 u32 \
+#                       match ip dst 192.168.12.128/25 \
+#                       match ip sport 443 0xffff \
+#                       flowid 1:10
+
+
+####################################################################################
+
+В данной статье хочу рассказать, как я строил систему ограничения входящего и исходящего трафика в Linux.
+Как и учет трафика, ограничение полосы пропускания в сети является очень важной задачей, хотя первое с каждым годом всё быстрее отходит на второй план, шейпинг трафика остается необходимой задачей каждого системного/сетевого администратора.
+
+Какие есть способы ограничения трафика?
+
+Для того, чтобы ответить на этот вопрос нужно определиться для чего этот трафик ограничивать вообще.
+Взяв за основу мою сеть из, примерно, 50 рабочих мест, которые выходят в интернет через шлюз, под управлением ОС Ubuntu и некоторые из пользователей пользуются локальными ресурсами на этом сервере по протоколу SMB.
+Моя цель ограничить пользователям скорость передачи данных в Интернет со справедливым разделением полосы пропускания между ними.
+
+Исходя из моих задач, для ограничения полосы пропускания можно использовать следующие методы:
+1. Ограничение с помощью прокси-сервера Squid. 
+Данный метод позволяет довольно гибко контролировать весь www,ftp трафик пользователей с возможностью гибкого ограничения скорости пропускания.
+2. Использование traffic control из iproute2.
+Очень гибкий и оптимальный метод ограничения трафика, но не предоставляющий контроля над WWW трафиком, как в предыдущем методе.
+3. Конечно возможно ограничить скорость путём использования модуля –m limit для iptables – но считаю это неприемлемым.
+
+В общем я решил остановиться на методе ограничения трафика с помощью пакета iproute2.
+
+Что, где и как?
+
+Как уже упоминал, я использую сервер: OS Ubuntu 10.04, ядро 2.6.32-30. В сервере 3 интерфейса: eth0 – внутренняя сеть, eth1 — провайдер 1, eth2 – провайдер 2.
+
+Задача: ограничить скорость входящего и исходящего трафика пользователей с приоритезацией трафика по классам, исходя из некоторых условий. Локальный трафик не ограничивать.
+
+Немного теории
+
+Представим ситуацию, когда пользователь установил соединение с youtube.com и смотрит какой-нибудь ролик в HD-качестве. Основная часть трафика направляется от сервера, в данном случае youtube.com к пользователю. Учитывая, что весь трафик проходит через наш шлюз, мы можем повлиять на скорость передачи этого трафика путем установки шейпера трафика на интерфейсе внутренней сети.
+Похожая ситуация происходит, когда пользователь загружает фотоотчет о проведенном отпуске, состоящий из 300 фотографий в разрешении 5000х3500 пикселей на какой-нибудь сервис хранения фотографий в интернете.
+
+Естественно, что при отсутствии системы ограничения трафика этот пользователь займёт весь канал и остальным пользователям не будет предоставлена нормальная скорость работы с Интернет. Но мы не может ограничить скорость отправки данных пользователем на внешнем интерфейсе сервера, т.к. для доступа пользователей в Интернет используется NAT, а, учитывая, что шейпинг трафика выполняется после преобразования адресов, то на внешнем интерфейсе сервера уже не будет пакетов с внутренними адресами сети.
+
+Для решения проблемы ограничения исходящего от клиента трафика я использовал устройство IFB, на которое перенаправлял весь исходящий от клиента трафик.
+
+В теории управления трафиком мы можем ограничивать только исходящий трафик. Следовательно, трафик, который направляется к пользователю внутренней сети, будет исходящим относительно внутреннего интерфейса eth0, а трафик, направляющийся от пользователя внутренней сети – исходящим относительно внешнего интерфейса eth1.
+
+Исходя из вышеизложенного, я ограничивал входящий к пользователю трафик на интерфейсе внутренней сети — eth0, а исходящий от пользователя трафик – на виртуальном интерфейсе ifb0.
+
+Для того чтобы во время занятия пользователем всей полосы пропускания, ограниченной ему на шлюзе, для скачивания какого-нибудь большого объема данных и при этом мог нормально пользоваться ssh и чтобы у него работал ping – я использовал приоритезацию трафика.
+
+Я расставил следующие приоритеты трафика:
+icmp
+udp,ssh
+tcp sport 80
+остальной неклассифицированный трафик
+
+Чем ниже параметр – тем выше приоритет трафика.
+
+Дисциплины, классы, фильтры
+
+Как уже было мной отмечено, входящий к пользователям трафик будет ограничиваться на интерфейсе eth0, а исходящий от пользователей – на виртуальном интерфейсе ifb0.
+
+Для инициализации интерфейса ifb0 нужно сначала загрузить модуль управления интерфейсом:
+/sbin/modprobe ifb
+После успешной загрузки модуля нужно включить интерфейс:
+/sbin/ip link set dev ifb0 up
+Затем, после того, как интерфейс будет поднят, нужно организовать переадресацию всего исходящего трафика от пользователей на этот интерфейс:
+/sbin/tc qdisc add dev eth0 ingress
+/sbin/tc filter add dev eth0 parent ffff: protocol ip u32 match u32 0 0 action mirred egress redirect dev ifb0
+Теперь можно смело начинать строить классы и фильтры для входящего к пользователям трафика на интерфейсе eth0, а исходящего – на интерфейсе ifb0.
+
+Для ограничения трафика используется следующий принцип:
+На интерфейсе создается, так называемый корневой обработчик очереди
+К этой дисциплине прикрепляется класс, который одержит информацию о максимальной пропускной способности данных, которые в этот класс попадут
+Добавляется фильтр, который, с помощью определенных параметров, относит каждый пакет к тому или иному классу
+
+Классы могут быть вложенными. То есть, если класс 1: описывает максимальную пропускную способность в 1Мбит, то класс 1:1, который является его подклассом, не может превысить ограничения по скорости его родителя.
+
+Ограничиваем входящий к пользователям трафик
+
+Все манипуляции с трафиком будем проводить на интерфейсе eth0.
+
+Для начала создадим корневой обработчик очереди на интерфейсе:
+/sbin/tc qdisc add dev eth0 root handle 1: htb default 900
+
+Тем самым мы привязали корневой обработчик очереди к интерфейсу eth0, присвоили ему номер 1: и указали на использование планировщика HTB с отправкой всего неклассифицированного трафика в класс с номером 900.
+
+Затем создадим дочерний класс 1:1 с шириной канала, равной скорости интерфейса:
+/sbin/tc class add dev eth0 parent 1: classid 1:1 htb rate 100Mbit burst 15k
+Все последующие классы будут подклассами только что созданного нами класса. Это дает нам более точную приоритезацию и обработку скорости потока данных.
+
+Создадим класс для локального трафика, адресом назначения или исходным адресом которого будет являться внутренний адрес сервера. Это нужно для удобства пользования ресурсами сервера, такими как SSH, SMB, FTP, WWW и так далее. Скорость, описанная классом – 50Mbit, но в случае, если скорость потока родительского класса не меньше 100Mbit, то разрешаем использовать 80Mbit, в качестве максимальной скорости передачи данных.
+/sbin/tc class add dev eth0 parent 1:1 classid 1:10 htb rate 50Mbit ceil 80Mbit burst 15k
+
+Далее создаем класс, скорость которого будет равно ширине полосы пропускания, которую нам предоставляет провайдер. В моем случае – это 15Mbit. 
+/sbin/tc class add dev eth0 parent 1:1 classid 1:100 htb rate 15Mbit burst 15k
+
+Даже если провайдер предоставляет большую скорость, к примеру 18Mbit, я рекомендую снижать эту скорость для шейпера на 1-2 Mbit для более «мягкого» ограничения трафика.
+Далее создадим класс, в который будут отправляться все пакеты данных, которые не попадут ни в один из созданных ранее классов.
+/sbin/tc class add dev eth0 parent 1:1 classid 1:900 htb rate 56Kbit ceil 128Kbit
+
+Для каждого пользователя я создавал отдельный подкласс, с выделенной полосой пропускания, а затем создавал подклассы этого класса для приоритезации трафика:
+/sbin/tc class add dev eth0 parent 1:100 classid 1:101 htb rate 4Mbit ceil 6Mbit
+
+Данной командой мы указали на создание класса с номером 1:101, который является подклассом класса с номером 1:100 и указали пропускную способность класса в 4Mbit, а в случае свободной полосу пропускания у родительского класса, разрешить максимальное прохождение данных по классу на скорости 6Mbit.
+
+Далее создаем подклассы для приоритезации трафика:
+# PRIO 1 -> icmp traffic - самый низкий приоритет
+/sbin/tc class add dev eth0 parent 1:101 classid 1:102 htb rate 33kbit ceil 6Mbit prio 1
+# PRIO 2 -> udp, ssh
+/sbin/tc class add dev eth0 parent 1:101 classid 1:103 htb rate 33kbit ceil 6Mbit prio 2
+# PRIO 3 -> tcp sport 80 – WWW трафик из мира
+/sbin/tc class add dev eth0 parent 1:101 classid 1:104 htb rate 33kbit ceil 6Mbit prio 3
+# PRIO 4 -> unclassified traffic – трафик, который не попал под условия, указанные в предыдущих классах
+/sbin/tc class add dev eth0 parent 1:101 classid 1:105 htb rate 33kbit ceil 6Mbit prio 4
+
+После создания классов пришло время создания фильтров, которые будут классифицировать трафик по определенным критериям.
+
+Есть несколько способов классифицировать трафик.
+Самые удобные из них – это u32 классификаторы, позволяющие классифицировать пакеты исходя из адреса назначения или отправителя, используемого протокола, номера порта и так далее, и классификаторы на основе меток iptables. Для использования последних необходимо сначала маркировать пакеты при помощи iptables в цепочке PREROUTING, на основе каких-либо условий, а затем при помощи tc направлять пакеты с соответствующей меткой в нужные классы.
+
+Я предпочел использовать u32 классификатор.
+
+Присваиваем icmp-трафику самый низкий приоритет и отправляем его в класс 1:102
+/sbin/tc filter add dev eth0 protocol ip parent 1:0 prio 1 u32 match ip dst 192.168.10.78 \
+match ip protocol 1 0xff flowid 1:102
+
+UDP и SSH трафик отправляем в класс 1:103
+/sbin/tc filter add dev eth0 protocol ip parent 1:0 prio 2 u32 match ip dst 192.168.10.78 \
+match ip protocol 17 0xff flowid 1:103
+/sbin/tc filter add dev eth0 protocol ip parent 1:0 prio 2 u32 match ip dst 192.168.10.78 \
+match ip protocol 6 0xff match ip sport 22 0xffff flowid 1:103
+
+WWW-трафик, пришедший с tcp-порта 80 отправляем в класс 1:104
+/sbin/tc filter add dev eth0 protocol ip parent 1:0 prio 3 u32 match ip dst 192.168.10.78 \
+match ip protocol 6 0xff match ip sport 80 0xffff flowid 1:104
+
+Трафик, не соответствующий ни одному из условий отправляем в класс 1:105
+/sbin/tc filter add dev eth0 protocol ip parent 1:0 prio 4 u32 match ip dst 192.168.10.78 flowid 1:105
+
+Приоритезация работает по такому принципу, что каждому классу выделяется по минимальной полосе пропускания с возможностью заимствования у родительского класса максимальной полосы пропускания, в зависимости от приоритета трафика, поэтому, если класс будет забит WWW-трафиком с tcp-порта 80, при прохождении icmp пакета с более низким приоритетом, чем у WWW-трафика, он будет пропущен вне очереди, учитывая его приоритет.
+
+Ограничиваем исходящий трафик
+
+Для ограничения исходящего от пользователей трафика выполняются такие же действия как и для входящего, только в ход идет виртуальный интерфейс ifb0. Также нужно изменить назначение следования трафика: вместо dst 192.168.10.78 – нужно указать src 192.168.10.78 соответственно.
+
+Автоматизация и принцип работы скриптов
+
+Для начала, для автоматизации процесса ограничения скорости нужно создать файл, в котором будет перечислены адреса пользователей, для которых нужно устанавливать ограничения с указанием этих ограничений.
+
+root@mixer:/etc/rc.d/shape# cat ./users
+#CLIENT	IP	DOWN	CEIL	UP	CEIL	PROVIDER	ID
+user1	192.168.10.78	1Mbit	2Mbit	1Mbit	4Mbit	mageal	10
+user2	192.168.10.44	1Mbit	1Mbit	2Mbit	3Mbit	ukrtel	11
+
+
+Файл представляет из себя поля, разделенный знаком табуляции либо пробелом со следующими значениями:
+CLIENT – Имя пользователя. Нужно для удобства предоставления данных
+IP – адрес пользователя в сети
+DOWN – скорость потока данных к пользователю
+CEIL – максимальная скорость входящего трафика к пользователю при доступности данной полосы у родительского класса
+UP — скорость потока данных от пользователя
+CEIL – то же, что и у CEIL для входящего трафика к пользователю
+PROVIDER – какой из провайдеров используется для обслуживания запросов пользователя (при наличии нескольких)
+ID – номер класса для пользователя. Подробнее о номерах классов ниже.
+Также я использую несколько bash-скриптов.
+
+root@steel:/etc/rc.d/shape# cat ./rc.shape
+
+#!/bin/bash
+. /etc/init.d/functions
+/sbin/modprobe ifb
+/sbin/ip link set dev ifb0 up
+
+TC="/sbin/tc"
+DEV_P1_DOWN="eth0"
+DEV_P1_UP="ifb0"
+
+stop(){
+$TC qdisc del dev $DEV_P1_DOWN root
+$TC qdisc del dev $DEV_P1_UP root
+$TC qdisc del dev $DEV_P1_DOWN ingress
+}
+start(){
+# Удаляем все обработчики на интерфейсе
+$TC qdisc del dev $DEV_P1_DOWN root
+$TC qdisc del dev $DEV_P1_UP root
+$TC qdisc del dev $DEV_P1_DOWN ingress
+
+## Перенаправляем весь исходящий от пользователей трафик на виртуальный интерфейс ifb0
+$TC qdisc add dev $DEV_P1_DOWN ingress
+$TC filter add dev $DEV_P1_DOWN parent ffff: protocol ip u32 match u32 0 0 action mirred egress redirect dev $DEV_P1_UP
+
+# Подгружаем скрипты с описанием классов входящего и исходящего трафика 
+
+. /etc/rc.d/shape/rc.shape.down.classes
+. /etc/rc.d/shape/rc.shape.up.classes
+
+# Весь трафик, который следует на шлюз или от него ограничиваем в 50Мбит с максимумом в 80Мбит.
+$TC filter add dev $DEV_P1_UP protocol ip parent 1:0 prio 1 u32 match ip dst 10.0.0.1 flowid 1:10
+$TC filter add dev $DEV_P1_DOWN protocol ip parent 1:0 prio 1 u32 match ip src 10.0.0.1 flowid 1:10
+
+# Подгружаем скрипт с описанием фильтров
+. /etc/rc.d/shape/rc.shape.filters
+}
+
+case "$1" in
+start)
+start
+;;
+stop)
+stop
+;;
+restart|reload)
+start
+;;
+*)
+msg_usage "${0##*/} {restart|start|stop}"
+RETVAL=1
+esac 
+
+Далее код, который подгружается:
+
+Классы
+
+root@steel:/etc/rc.d/shape# cat ./rc.shape.down.classes
+
+#!/bin/bash
+## DOWNLOAD CLASSES
+##########################################################
+# Создаем корневой обработчик очереди
+$TC qdisc add dev $DEV_P1_DOWN root handle 1: htb default 900
+
+# Описание классов для входящего к пользователям трафика
+$TC class add dev $DEV_P1_DOWN parent 1: classid 1:1 htb rate 100Mbit burst 15k
+
+# Локльный трафик (SERVER -> CLIENTS)
+$TC class add dev $DEV_P1_DOWN parent 1:1 classid 1:10 htb rate 50Mbit ceil 80Mbit burst 15k
+
+# Трафик от провайдера (SERVER -> CLIENTS)
+$TC class add dev $DEV_P1_DOWN parent 1:1 classid 1:100 htb rate 15Mbit burst 15k
+
+# Неклассифицированный трафик будет отправлен в этот класс (SERVER -> CLIENTS)
+$TC class add dev $DEV_P1_DOWN parent 1:1 classid 1:900 htb rate 128Kbit ceil 128Kbit
+
+root@steel:/etc/rc.d/shape# cat ./rc.shape.up.classes
+#!/bin/bash
+
+## UPLOAD CLASSES
+#############################################################
+# Создаем корневой обработчик очереди 
+$TC qdisc add dev ifb0 root handle 1: htb default 900
+
+# Описание классов для исходящего от пользователей трафика
+$TC class add dev ifb0 parent 1: classid 1:1 htb rate 100Mbit burst 15k
+# Локальный трафик (CLIENTS -> SERVER)
+$TC class add dev $DEV_P1_UP parent 1:1 classid 1:10 htb rate 50Mbit ceil 80Mbit burst 15k
+
+# Трафик к провайдеру (CLIENTS -> SERVER)
+$TC class add dev $DEV_P1_UP parent 1:1 classid 1:100 htb rate 5Mbit burst 15k
+# Неклассифицированный трафик будет отправлен в этот класс (CLIENTS -> SERVER)
+$TC class add dev $DEV_P1_UP parent 1:1 classid 1:900 htb rate 128Kbit ceil 128Kbit
+
+
+И фильтры:
+
+root@steel:/etc/rc.d/shape# cat ./rc.shape.filters
+#!/bin/bash
+# читаем построчно файл “users”
+while read LINE
+do
+set -- $LINE
+if [[ $1 =~ '^\#' ]]
+then
+continue
+fi
+################################################################
+CLIENT_IP=$2
+CLIENT_DOWN_RATE=$3
+CLIENT_DOWN_CEIL=$4
+################################################################
+# DOWNSTREAM
+#####################
+
+# создаем отдельный подкласс для пользователя
+$TC class add dev $DEV_P1_DOWN parent 1:100 classid 1:${8}1 htb rate $CLIENT_DOWN_RATE ceil $CLIENT_DOWN_CEIL
+
+# PRIO 1 -> icmp traffic
+$TC class add dev $DEV_P1_DOWN parent 1:${8}1 classid 1:${8}2 htb rate 33kbit ceil $CLIENT_DOWN_CEIL prio 1
+
+# PRIO 2 -> udp, ssh
+$TC class add dev $DEV_P1_DOWN parent 1:${8}1 classid 1:${8}3 htb rate 33kbit ceil $CLIENT_DOWN_CEIL prio 2
+
+# PRIO 3 -> tcp sport 80
+$TC class add dev $DEV_P1_DOWN parent 1:${8}1 classid 1:${8}4 htb rate 33kbit ceil $CLIENT_DOWN_CEIL prio 3
+
+# PRIO 4 -> unclassified traffic
+$TC class add dev $DEV_P1_DOWN parent 1:${8}1 classid 1:${8}5 htb rate 33kbit ceil $CLIENT_DOWN_CEIL prio 4
+
+# фильтруем icmp-пакеты в ранее созданный нами класс для icmp-трафика с приоритетот 1
+$TC filter add dev $DEV_P1_DOWN protocol ip parent 1:0 prio 1 u32 match ip dst $CLIENT_IP \
+match ip protocol 1 0xff flowid 1:${8}2
+
+# фильтрация udp
+$TC filter add dev $DEV_P1_DOWN protocol ip parent 1:0 prio 2 u32 match ip dst $CLIENT_IP \
+match ip protocol 17 0xff flowid 1:${8}3
+# ssh
+$TC filter add dev $DEV_P1_DOWN protocol ip parent 1:0 prio 2 u32 match ip dst $CLIENT_IP \
+match ip protocol 6 0xff match ip sport 22 0xffff flowid 1:${8}3
+# WWW, sport 80
+$TC filter add dev $DEV_P1_DOWN protocol ip parent 1:0 prio 3 u32 match ip dst $CLIENT_IP \
+match ip protocol 6 0xff match ip sport 80 0xffff flowid 1:${8}4
+# самый высокий приоритет – трафику, не попавшему под предыдущие фильтры
+$TC filter add dev $DEV_P1_DOWN protocol ip parent 1:0 prio 4 u32 match ip dst $CLIENT_IP flowid 1:${8}5
+
+# UPSTREAM
+#####################
+
+CLIENT_UP_RATE=$5
+CLIENT_UP_CEIL=$6
+
+### ТАКИЕ ЖЕ ПРАВИЛА И ДЛЯ ИСХОДЯЩЕГО ТРАФИКА
+
+$TC class add dev $DEV_P1_UP parent 1:100 classid 1:${8}1 htb rate $CLIENT_UP_RATE ceil $CLIENT_UP_CEIL
+# PRIO 1 -> icmp traffic
+$TC class add dev $DEV_P1_UP parent 1:${8}1 classid 1:${8}2 htb rate 1kbit ceil $CLIENT_UP_CEIL prio 1
+# PRIO 2 -> udp, ssh
+$TC class add dev $DEV_P1_UP parent 1:${8}1 classid 1:${8}3 htb rate 1kbit ceil $CLIENT_UP_CEIL prio 2
+# PRIO 3 -> unclassified traffic
+$TC class add dev $DEV_P1_UP parent 1:${8}1 classid 1:${8}4 htb rate 1kbit ceil $CLIENT_UP_CEIL prio 3
+$TC filter add dev $DEV_P1_UP protocol ip parent 1:0 prio 1 u32 match ip src $CLIENT_IP \
+match ip protocol 1 0xff flowid 1:${8}2
+$TC filter add dev $DEV_P1_UP protocol ip parent 1:0 prio 2 u32 match ip src $CLIENT_IP \
+match ip protocol 17 0xff flowid 1:${8}3
+$TC filter add dev $DEV_P1_UP protocol ip parent 1:0 prio 2 u32 match ip src $CLIENT_IP \
+match ip protocol 6 0xff match ip dport 22 0xffff flowid 1:${8}3
+$TC filter add dev $DEV_P1_UP protocol ip parent 1:0 prio 3 u32 match ip src $CLIENT_IP flowid 1:${8}4
+
+done < ./users
+
+Данные скрипты нужно положить в один каталог, Выполнить:
+
+chmod +x ./rc.shape
+
+и затем
+
+./rc.shape start
+
+Я описал один из методов ограничения трафика. Утилита tc – очень мощная вещь в вопросах об ограничениях трафика. Рекомендую ознакомиться с документом: LARTC-HOWTO для более глубокого изучения данного вопроса.
+

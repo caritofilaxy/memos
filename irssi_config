@@ -1,0 +1,51 @@
+servers = (
+  {
+    address = "irc.oftc.net";
+    chatnet = "OFTC";
+    port = "6667";
+    use_tls = "no";
+    tls_verify = "no";
+  },
+  {
+    address = "irc.freenode.net";
+    chatnet = "Freenode";
+    port = "6667";
+    use_tls = "no";
+    tls_verify = "no";
+  }
+);
+
+chatnets = {
+  OFTC = { type = "IRC"; nick = "{YOR_LOGIN}"; };
+  Freenode = { type = "IRC"; nick = "{YOR_LOGIN}"; };
+};
+
+channels = (
+  { name = "#kernelnewbies"; chatnet = "OFTC"; autojoin = "yes"; },
+  { name = "##c"; chatnet = "Freenode"; autojoin = "yes"; },
+  { name = "#debian"; chatnet = "Freenode"; autojoin = "yes"; },
+  { name = "#devuan"; chatnet = "Freenode"; autojoin = "yes"; },
+  { name = "#perl"; chatnet = "Freenode"; autojoin = "yes"; }
+);
+
+aliases = { wc = "WINDOW CLOSE"; wg = "WINDOW GOTO"; wl = "window list"; };
+
+settings = {
+  core = { real_name = "{YOR_LOGIN}"; user_name = "{YOR_LOGIN}"; nick = "{YOR_LOGIN}"; };
+  "fe-text" = { actlist_sort = "refnum"; };
+  "fe-common/core" = { autolog = "yes"; };
+};
+ignores = (
+  { level = "JOINS PARTS QUITS NICKS"; channels = ( "#debian" ); },
+  { level = "JOINS PARTS QUITS NICKS"; channels = ( "#devuan" ); },
+  { level = "JOINS PARTS QUITS NICKS"; channels = ( "##c" ); },
+  { level = "JOINS PARTS QUITS NICKS"; channels = ( "#perl" ); },
+  {
+    level = "JOINS PARTS QUITS NICKS";
+    channels = ( "#kernelnewbies" );
+  }
+);
+
+logs = { };
+
+

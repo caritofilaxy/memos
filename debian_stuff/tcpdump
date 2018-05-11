@@ -1,0 +1,22 @@
+- capture packets with tcp syn enabled
+tcpdump -i <interface> "tcp[tcpflags] & (tcp-syn) != 0"
+
+
+- capture tcp syn or synack 
+tcpdump -i <interface> "tcp[tcpflags] & (tcp-syn|tcp-ack) != 0"
+
+- capture tcp syn and not ack
+tcpdump -i <iface> '((tcp[13] & 2) != 0) and ((tcp[13] & 16) ==0)'
+
+tcp[13] & 1 != 0    - fin
+tcp[13] & 2 != 0    - syn 
+tcp[13] & 4 != 0    - rst
+tcp[13] & 8 != 0    - psh
+tcp[13] & 16 != 0   - ack
+tcp[13] & 32 != 0   - urg
+
+# also possible syn and not ack
+((tcp[tcpflags] == tcp-syn) and (tcp[tcpflags] != tcp-ack))
+
+
+https://danielmiessler.com/study/tcpdump/

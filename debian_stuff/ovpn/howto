@@ -1,0 +1,64 @@
+# https://linode.com/docs/networking/vpn/set-up-a-hardened-openvpn-server/
+# stretch, debian 9
+
+#### install
+wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg|apt-key add -
+echo "deb http://build.openvpn.net/debian/openvpn/stable stretch main" > /etc/apt/sources.list.d/openvpn-aptrepo.list
+apt update && apt install openvpn
+
+adduser --system --shell /usr/sbin/nologin --no-create-home ovpn
+groupadd ovpn
+usermod -g ovpn ovpn
+
+openvpn --genkey --secret /etc/openvpn/server/ta.key
+
+openssl genpkey -genparam -algorithm DH -out /etc/openvpn/server/dhp4096.pem -pkeyopt dh_paramgen_prime_len:4096
+#openssl genpkey -genparam -algorithm DH -out /etc/openvpn/server/dhp1024.pem -pkeyopt dh_paramgen_prime_len:1024
+
+
+#### vpn ca 
+# easy rsa
+make-cadir ~/ca && cd ~/ca
+ln -s openssl-1.0.0.cnf openssl.cnf
+
+edit KEY_ values in vars
+
+source ./vars
+
+./clean-all
+
+# server creds
+./build-ca
+
+./build-key-server server
+
+scp ./keys/{ca.crt,server.crt,server.key} root@<your_linode's_IP>:/etc/openvpn/server
+scp root@<your_linode's_IP>:/etc/openvpn/server/ta.key ./keys
+
+# client creds
+cd ~/ca && source ./vars && ./build-key client1
+
+# setup configs
+...
+
+# Distribute Credentials
+Each client device needs to contain the following files:
+
+client1.key # Exclusive to this device.
+client1.cert # Exclusive to this device.
+CA.pem # Is shared among server and client devices.
+ta.key # Is shared among server and client devices.
+client.ovpn # Is shared among client devices.
+
+# Initial Startup and Log Monitoring
+#
+#sudo systemctl enable openvpn
+systemctl enable openvpn@server
+systemctl start openvpn@server
+
+start services
+
+#sudo systemctl enable openvpn.* && sudo systemctl start openvpn.*
+#sudo systemctl status openvpn*
+
+

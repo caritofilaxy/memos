@@ -1,0 +1,11 @@
+## make iso
+genisoimage out.iso dirname
+genisoimage out.iso file1 file2 file3
+## -R optoin enables Rock Ridge (owner, perms, longnames, etc)
+
+dd if=/dev/cdrom of=/path/to/iso
+
+
+## burn iso to disk
+wodim --devices
+wodim -v dev=/dev/xxx speed={4|8|16} /path/to/iso

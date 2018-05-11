@@ -1,0 +1,11 @@
+# allow root login from specific host
+
+PermitRootLogin no
+Match Address ${ip_address}
+    PermitRootLogin yes
+
+# run gui app on remote desktop
+
+#ssh remote
+#export DISPLAY=:0
+#start_gui_app

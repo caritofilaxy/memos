@@ -1,0 +1,11 @@
+server:
+apt-get install nfs-kernel-server
+edit /etc/exportfs
+/var/share *(rw,sync,no_subtree_check,no_root_squash)
+exportfs -a
+systemctl enable nfs-kernel-server
+
+client:
+apt-get install nfs-common
+mount targetip:/var/share /localdir
+

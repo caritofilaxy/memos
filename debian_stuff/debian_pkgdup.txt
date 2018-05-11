@@ -1,0 +1,7 @@
+to backup
+dpkg --get-selections > pkglist.txt
+
+to restore
+dpkg --set-selections < pkglist.txt
+apt-get update
+apt-get dselect-upgrade

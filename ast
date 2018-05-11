@@ -1,0 +1,5 @@
+# kill hanged channel
+
+sip show channels
+sip show channel ID
+channel request hangup ID

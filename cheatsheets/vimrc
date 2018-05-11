@@ -1,0 +1,4 @@
+syntax off
+filetype off
+nohlsearch
+set ts=4 sw=4
