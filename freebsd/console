@@ -1,0 +1,5 @@
+- list available modes
+# vidcontol -i mode
+
+- set mode
+# vidcontrol MODE_$number
