@@ -20,3 +20,7 @@ tcp[13] & 32 != 0   - urg
 
 
 https://danielmiessler.com/study/tcpdump/
+
+
+- mac filtering
+tcpdump ether host 1c:66:aa:02:df:44

@@ -1,0 +1,1 @@
+pw usermod -n username -s /bin/tcsh
