@@ -1,0 +1,5 @@
+# install specific kernel version
+
+emerge -1 =kernel-version
+eselect kernel list
+eselect kernel set N
