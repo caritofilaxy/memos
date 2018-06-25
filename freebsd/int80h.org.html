@@ -1,0 +1,108 @@
+<html><head><title>int80h.org -- Unix Assembly Language Programming</title>
+</head>
+<body bgcolor="#FFFFFF"><div><center><form method="get" action="http://int80h.org.master.com/texis/master/search/">
+<input size="25" name="q" value="" />
+<input type="submit" name="xsubmit" value="Search:" />
+<select name="s">
+<option value="SS" selected>This Site</option>
+<option value="OD">The Web</option>
+<option value="MB">Message Boards</option>
+<option value="SQ">Stock Quotes</option>
+<option value="NN">Tech News</option></select></form></center></div>
+<h1>What is int 80h?</h1>
+<blockquote><i>by G. Adam Stanislav</i><br />
+<a href="http://www.whizkidtech.redprince.net/" target="_top"><b><i>Whiz Kid Technomagic</i></b></a></blockquote>
+<p>On the Intel family of microprocessors, such as the Pentium, <b><code>int 80h</code></b> is the <b><code>assembly language</code></b> op code for <b><code>interrupt 80h</code></b>. This is the <b><code>syscall</code></b> interrupt on a typical Intel-based <b><i>Unix</i></b> system, such as <a href="http://www.FreeBSD.org/" target="_top"><b><i>FreeBSD</i></b></a>. It allows application programmers to obtain system services from the <b><i>Unix</i></b> kernel.</p>
+<p>The <b><i>Unix</i></b> kernel services handle such things as the opening and closing of files, accessing various devices, reading from and writing to the terminal, starting new processes, etc. Without these services, every single program would have to do it on its own. The programmer would spend so much time interfacing with the computer hardware that he/she would have little energy left to concentrate on whatever his/her software is meant to do.</p>
+<p>Such was, indeed, the case back in the 1960’s when I started programming computers. To a lesser extent, such was the case in the 1980’s when the then new personal computers used <small>MS DOS</small>, an operating system that provided some of these services, but not all of them. <b><i>Unix</i></b> existed in the 1980’s, but was used mostly on mainframe computers, not on personal computers. Nowadays, just about any personal computer can use the full power of <b><i>Unix</i></b>, thanks to the <a href="http://www.FreeBSD.org/" target="_top"><b><i>FreeBSD</i></b></a> operating system.</p>
+<p>Most programmers will never use <b><code>int 80h</code></b> in their code directly: Whatever programming language they use does it for them. The most popular programming language under <b><i>Unix</i></b> is <b><code>C</code></b>.</p>
+<p>There is one programming language, however, which requires the programmer to use <b><code>int 80h</code></b> directly, namely the <b><code>assembly language</code></b>.</p>
+<h2>Assembly Language</h2>
+<p>What is <b><code>assembly language</code></b>, and why does it not provide the programmer with an indirect way of using <b><code>int 80h</code></b>?</p>
+<p>To answer these questions, we need to understand that computers do not actually “speak” the various languages (such as the <b><code>C</code></b> language I mentioned). These languages were designed to make the programmer’s job easier: They follow the rules of human languages, having a grammar and a syntax.</p>
+<p>The code written in these languages, known as <small>HLL</small> (high-level languages) must either be <b><code>compiled</code></b>, i.e., translated to the <b><code>machine language</code></b>—the language of the computer, or they must be <b><code>interpreted</code></b> by another program.</p>
+<p>The <b><code>assembly language</code></b> is quite different. Its instructions, or <b><code>op codes</code></b>, have a more-or-less one-on-one correspondence to the <b><code>machine language</code></b>. They, too, must be translated to the <b><code>machine language</code></b>, but instead of <b><code>compiling</code></b>, they are <b><code>assembled</code></b>.</p>
+<p>The <small>HLL</small> code, too, is first translated into <b><code>assembly language</code></b> and then assembled, however, this translation is typically done by the <b><code>compiler</code></b>, not by the programmer. The <b><code>compiler</code></b> uses a techology known as <b><code>optimization</code></b> to create fast and lean <b><code>assembly language</code></b> code. Nevertheless, the <b><code>compiler</code></b> is a piece of computer software. Whenever it does not know whether a specific <b><code>optimization</code></b> might cause problems elsewhere in the code, it takes a cautious approach.</p>
+<p>On the other hand, an experienced <b><code>assembly language</code></b> programmer, familiar with everything within the code can, and usually does, take a much bolder and more straightforward approach, cutting out everything that does not need to be there.</p>
+<p>For that reason, <b><code>assembly language</code></b> programs are usually smaller and faster than corresponding <small>HLL</small> programs. I said “usually”, because a novice <b><code>assembly language</code></b> programmer may not yet be aware of all the tricks and shortcuts he can take. But few people remain novice <b><code>assembly language</code></b> programmers. They either abandon <b><code>assembly language</code></b> very quickly, or they absolutely fall in love with it and become quite proficient very fast.</p>
+<h2>Why does not everyone program in assembly language?</h2>
+<p>There are several reasons why many (actually most) programmers use a <small>HLL</small> and not <b><code>assembly language</code></b>.</p>
+<p>For one, it is like driving with a stick shift. You get more control over the car with the stick shift than with automatic transmission, but most drivers prefer the convenience of automatic transmission. Similarly, most programmers prefer the convenience of an <small>HLL</small> over the full control <b><code>assembly language</code></b> offers.</p>
+<p>Secondly, there is a common <b><i>myth</i></b> among programmers that <b><code>assembly language</code></b> is very hard to use and that it takes much longer to code the same program in <b><code>assembly language</code></b> than in a <small>HLL</small>. This, indeed, is just a <b><i>myth</i></b>: <b><code>assembly language</code></b> is certainly not easy, but then no programming language is. <b><code>assembly language</code></b> is not harder than any other language, it is just different. An experienced <b><code>assembly language</code></b> programmer can and does code as fast in <b><code>assembly language</code></b> as an experienced <b><code>C</code></b> programmer does in <b><code>C</code></b>. It is simply a matter of familiarity.</p>
+<p>A third, and certainly valid, concern is <b><i>portability</i></b>. An <b><code>assembly language</code></b> program is written for a specific <b><code>CPU</code></b> and will only run on that <b><code>CPU</code></b>. In early days of <b><i>Unix</i></b> the system was run on many different <b><code>CPU</code></b>s. A <b><code>C</code></b> program could be ported to a different architecture with a relative ease.</p>
+<p>On the other hand, all <small>MS DOS</small> computers were built with the Intel family of microprocessors, hence an <b><code>assembly language</code></b> program would run on them all. Thus, <b><code>assembly language</code></b> was much more popular among <small>MS DOS</small> programmers than among <b><i>Unix</i></b> programmers.</p>
+<p>But times have changed. For better or worse, the absolute majority of computers in existence today are built with the Intel family of microprocessors. Thus, portability is much less of a concern.</p>
+<h2>Assembly Language and Unix</h2>
+<p>As more and more computer users are disenchanted with <small>MS DOS</small>/Windows based systems, they are moving toward <b><i>Unix</i></b>. <a href="http://www.FreeBSD.org/" target="_top"><b><i>FreeBSD</i></b></a> is a particularly good choice in this regard. That means that many of the <b><code>assembly language</code></b> programmers who used to program exclusively in the <small>MS DOS</small> environment are migrating toward <b><i>Unix</i></b>.</p>
+<p>But information on <b><code>assembly language</code></b> programming in the <b><i>Unix</i></b> environment is scarce and hard to come by. That is why <a href="http://www.whizkidtech.redprince.net/" target="_top"><b><i>Whiz Kid Technomagic</i></b></a> has started this web site: To make the information available to others as we keep discovering it. Stay tuned for more and more information on <b><code>assembly language</code></b> programming under <b><i>Unix</i></b>, and specifically <a href="http://www.FreeBSD.org/" target="_top"><b><i>FreeBSD</i></b></a>, on this web site.</p>
+<p>Please visit our <a href="http://www.int80h.org/bsdasm/" target="_top">FreeBSD Assembly Language Tutorial</a>:</p>
+<ul><li><a href="/bsdasm/#intro">Preface</a></li>
+<li><a href="/bsdasm/#the-tools">1. The Tools</a>
+<ul>
+<li><a href="/bsdasm/#the-assembler">1.1. The Assembler</a></li>
+<li><a href="/bsdasm/#the-linker">1.2. The Linker</a></li>
+</ul></li>
+<li><a href="/bsdasm/#system-calls">2. System Calls</a>
+<ul>
+<li><a href="/bsdasm/#default-calling-convention">2.1. Default Calling Convention</a></li>
+<li><a href="/bsdasm/#alternate-calling-convention">2.2. Alternate Calling Convention</a></li>
+<li><a href="/bsdasm/#use-geneva">2.3. Which Convention Should You Use?</a></li></ul></li>
+<li><a href="/bsdasm/#call-numbers">3. Call Numbers</a>
+<ul>
+<li><a href="/bsdasm/#the-syscalls-file">3.1. The syscalls file</a></li>
+</ul></li>
+<li><a href="/bsdasm/#return-values">4. Return Values</a>
+<ul>
+<li><a href="/bsdasm/#man-pages">4.1. Man Pages</a></li>
+<li><a href="/bsdasm/#where-return-values">4.2. Where Are The Return Values?</a></li>
+<li><a href="/bsdasm/#where-errno">4.3. Where Is <tt>errno</tt>?</a></li>
+<li><a href="/bsdasm/#how-to-know-error">4.4. Determining an Error Occured</a></li>
+</ul></li>
+<li><a href="/bsdasm/#portable-code">5. Creating Portable Code</a>
+<ul>
+<li><a href="/bsdasm/#deal-with-function-numbers">5.1. Dealing With Function Numbers</a></li>
+<li><a href="/bsdasm/#deal-with-geneva">5.2. Dealing With Conventions</a></li>
+<li><a href="/bsdasm/#deal-with-other-portability">5.3. Dealing With Other Portability Issues</a></li>
+<li><a href="/bsdasm/#portable-library">5.4. Using a Library</a></li>
+<li><a href="/bsdasm/#portable-include">5.5. Using an Include File</a></li>
+</ul></li>
+<li><a href="/bsdasm/#first-program">6. Our First Program</a>
+<ul>
+<li><a href="/bsdasm/#assemble-1">6.1. Assembling the Code</a>
+<ul>
+<li><a href="/bsdasm/#get-nasm">6.1.1 Installing NASM</a></li>
+</ul></li>
+</ul></li>
+<li><a href="/bsdasm/#unix-filters">7. Writing Unix Filters</a></li>
+<li><a href="/bsdasm/#buffered-io">8. Buffered Input and Output</a>
+<ul>
+<li><a href="/bsdasm/#ungetc">8.1. How To Unread a Character</a></li>
+</ul></li>
+<li><a href="/bsdasm/#command-line">9. Command Line Arguments</a></li>
+<li><a href="/bsdasm/#environment">10. Unix Environment</a>
+<ul>
+<li><a href="/bsdasm/#find-environment">10.1. How To Find Environment Variables</a></li>
+<li><a href="/bsdasm/#webvar">10.2. <tt>webvar</tt></a>
+<ul>
+<li><a href="/bsdasm/#cgi">10.2.1 CGI: A Quick Overview</a></li>
+</ul></li>
+</ul></li>
+<li><a href="/bsdasm/#files">11. Working with Files</a>
+<ul>
+<li><a href="/bsdasm/#finite-state-machine">11.1. Finite State Machine</a>
+<ul>
+<li><a href="/bsdasm/#final-state">11.1.1 The Final State</a></li>
+<li><a href="/bsdasm/#tuc-counter">11.1.2 The Output Counter</a></li>
+</ul></li>
+<li><a href="/bsdasm/#software-fsm">11.2. Implementing FSM is Software</a></li>
+<li><a href="/bsdasm/#memory-mapped-files">11.3. Memory Mapped Files</a></li>
+</ul></li>
+<li><a href="/bsdasm/#caveats">12. Caveats</a>
+</li>
+ <li><a href="/bsdasm/#pearls">Appendix A – Assembly Language Pearls</a></li>
+<li><a href="/bsdasm/#bsd-style-copyright">Appendix B – BSD Style Copyright</a></li>
+<li><a href="/bsdasm/#acknowledgements">Appendix C – Acknowledgements</a></li>
+<li><a href="http://whizkidtech.redprince.net/fancybald/">Terms of use</a></li>
+</ul>
+</body>
+</html>

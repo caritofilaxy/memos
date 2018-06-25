@@ -1,0 +1,3172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C/DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml.lang="en" lang="en">
+<head>
+<title>FreeBSD Assembly Language Programming</title>
+<meta name="keywords" content="int 80h, assembly language, kernel programming, files, memory, finite state machine, Unix, FreeBSD" />
+<meta name="description" content="Unix assembly language programming" />
+<style type="text/css">
+<!--
+	td.programlisting {
+		background: #E8E8E8;
+		color: rgb(0, 0, 0)
+	}
+
+	td.screen {
+		background: rgb(0, 0, 0);
+		color: rgb(255, 255, 255)
+	}
+-->
+</style></head>
+<body bgcolor="#ffffff" text="#000000" link="#0000ff" vlink="#840084" alink="#0000ff">
+<div class="chapter"><a name="intro" />
+<h1>Preface</h1>
+<i>by G. Adam Stanislav<br />
+<a href="http://www.whizkidtech.redprince.net/">Whiz Kid Technomagic</a></i>
+
+<p>Assembly language programing under Unix is highly undocumented. It is generally assumed that no one would ever want to use it because various Unix systems run on different microprocessors, so everything should be written in <small>C</small> for portability.</p>
+<p>In reality, <small>C</small> portability is quite a myth. Even <small>C</small> programs need to be modified when ported from one Unix to another, regardless of what processor each runs on. Typically, such a program is full of conditional statements depending on the system it is compiled for.</p>
+<p>Even if we believe that all of Unix software should be written in <small>C</small>, or some other high-level language, we still need assembly language programmers: Who else would write the section of <small>C</small> library that accesses the kernel?</p>
+<p>In this tutorial I will attempt to show you how you can use assembly language writing Unix programs, specifically under FreeBSD.</p>
+<p>This tutorial does not explain the basics of assembly language. There are enough resources about that (for a complete online course in assembly language, see Randall Hyde’s <a target="_top" href="http://webster.cs.ucr.edu/">Art of Assembly Language</a>; or if you prefer a printed book, take a look at Jeff Duntemann’s <a target="_top" href="http://www.int80h.org/cgi-bin/isbn?isbn=0471375233">Assembly Language Step-by-Step</a>). However, once the tutorial is finished, any assembly language programmer will be able to write programs for FreeBSD quickly and efficiently.</p>
+</div>
+<div class="chapter"><a name="the-tools" />
+<h1>Chapter 1 – The Tools</h1>
+
+<div class="sect1"><a name="the-assembler" />
+<h2>1.1. The Assembler</h2>
+
+<p>The most important tool for assembly language programming is the assembler, the software that converts assembly language code into machine language.</p>
+<p>Two very different assemblers are available for FreeBSD. One is <tt><b>as(1)</b></tt>, which uses the traditional Unix assembly language syntax. It comes with the system.</p>
+<p>The other is <span class="application"><tt><b>/usr/ports/devel/nasm</b></tt></span>. It uses the Intel syntax. Its main advantage is that it can assemble code for many operating systems. It needs to be installed separately, but is completely free.</p>
+<p>This tutorial uses <span class="application"><tt><b>nasm</b></tt></span> syntax because most assembly language programmers coming to FreeBSD from other operating systems will find it easier to understand. And, because, quite frankly, that is what I am used to.</p>
+</div>
+<div class="sect1"><a name="the-linker" />
+<h2>1.2. The Linker</h2>
+<p>The output of the assembler, like that of any compiler, needs to be linked to form an executable file.</p>
+<p>The standard <tt><b>ld(1)</b></tt> linker comes with FreeBSD. It works with the code assembled with either assembler.</p>
+</div>
+</div>
+<div class="chapter"><a name="system-calls" />
+<h1>Chapter 2 – System Calls</h1>
+<div class="sect1"><a name="default-calling-convention" />
+<h2>2.1. Default Calling Convention</h2>
+<p>By default, the FreeBSD kernel uses the <small>C</small> calling convention. Further, although the kernel is accessed using <span class="opcode"><code><b>int 80h</b></code></span>, it is assumed the program will call a function that issues <span class="opcode"><code><b>int 80h</b></code></span>, rather than issuing <span class="opcode"><code><b>int 80h</b></code></span> directly.</p>
+<p>This convention is very convenient, and quite superior to the Microsoft convention used by <small>MS DOS</small>. Why? Because the Unix convention allows any program written in any language to access the kernel.</p>
+<p>An assembly language program can do that as well. For example, we could open a file:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+kernel:
+	int	80h	; Call kernel
+	ret
+
+open:
+	push	dword mode
+	push	dword flags
+	push	dword path
+	mov	eax, 5
+	call	kernel
+	add	esp, byte 12
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>This is a very clean and portable way of coding. If you need to port the code to a Unix system which uses a different interrupt, or a different way of passing parameters, all you need to change is the kernel procedure.</p>
+<p>But assembly language programmers like to shave off cycles. The above example requires a <span class="opcode"><code><b>call/ret</b></code></span> combination. We can eliminate it by <span class="opcode"><code><b>push</b></code></span>ing an extra dword:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+open:
+	push	dword mode
+	push	dword flags
+	push	dword path
+	mov	eax, 5
+	push	eax		; Or any other dword
+	int	80h
+	add	esp, byte 16
+</pre></blockquote></div></td></tr></table>
+<p>The <span class="constant"><code><b>5</b></code></span> that we have placed in <span class="register"><code><b>EAX</b></code></span> identifies the kernel function, in this case <span class="syscall"><code><b>open</b></code></span>.</p>
+</div>
+<div class="sect1"><a name="alternate-calling-convention" />
+<h2>2.2. Alternate Calling Convention</h2>
+<p>FreeBSD is an extremely flexible system. It offers other ways of calling the kernel. For it to work, however, the system must have Linux emulation installed.</p>
+<p>Linux is a Unix-like system. However, its kernel uses the Microsoft system-call convention of passing parameters in registers. As with the Unix convention, the function number is placed in <span class="register"><code><b>EAX</b></code></span>. The parameters, however, are not passed on the stack but in <span class="register"><code><b>EBX, ECX, EDX, ESI, EDI, EBP</b></code></span>:</p>
+ <table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+open:
+	mov	eax, 5
+	mov	ebx, path
+	mov	ecx, flags
+	mov	edx, mode
+	int	80h
+</pre></blockquote></div></td></tr></table>
+<p>This convention has a great disadvantage over the Unix way, at least as far as assembly language programming is concerned: Every time you make a kernel call you must <span class="opcode"><code><b>push</b></code></span> the registers, then <span class="opcode"><code><b>pop</b></code></span> them later. This makes your code bulkier and slower. Nevertheless, FreeBSD gives you a choice.</p>
+<p>If you do choose the Microsoft/Linux convention, you must let the system know about it. After your program is assembled and linked, you need to brand the executable:</p>
+ <table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>brandelf -f Linux <span class="replaceable"><i>filename</i></span></b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+</div>
+<div class="sect1"><a name="use-geneva" />
+<h2>2.3. Which Convention Should You Use?</h2>
+<p>If you are coding specifically for FreeBSD, you should always use the Unix convention: It is faster, you can store global variables in registers, you do not have to brand the executable, and you do not impose the installation of the Linux emulation package on the target system.</p>
+<p>If you want to create portable code that can also run on Linux, you will probably still want to give the FreeBSD users as efficient a code as possible. I will show you how you can accomplish that after I have explained the basics.</p>
+</div>
+<div class="sect1"><a name="call-numbers" />
+<h2>2.4. Call Numbers</h2>
+<p>To tell the kernel which system service you are calling, place its number in <span class="register"><code><b>EAX</b></code></span>. Of course, you need to know what the number is.</p>
+<div class="sect2"><a name="the-syscalls-file" />
+<h3>2.4.1. The <span class="filename"><tt>syscalls</tt></span> File</h3>
+<p>The numbers are listed in <span class="filename"><tt>syscalls</tt></span>. <span class="command"><tt><b><i>locate syscalls</i></b></tt></span> finds this file in several different formats, all produced automatically from <span class="filename"><tt>syscalls.master</tt></span>.</p>
+<p>You can find the master file for the default Unix calling convention in <span class="filename"><tt>/usr/src/sys/kern/syscalls.master</tt></span>. If you need to use the other convention implemented in the Linux emulation mode, read <span class="filename"><tt>/usr/src/sys/i386/linux/syscalls.master</tt></span>.</p>
+<blockquote>
+<b>N.B.:</b> Not only do FreeBSD and Linux use different calling conventions, they sometimes use different numbers for the same functions.</blockquote>
+<p><span class="filename"><tt>syscalls.master</tt></span> describes how the call is to be made:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+0	STD	NOHIDE	{ int nosys(void); } syscall nosys_args int
+1	STD	NOHIDE	{ void exit(int rval); } exit rexit_args void
+2	STD	POSIX	{ int fork(void); }
+3	STD	POSIX	{ ssize_t read(int fd, void *buf, size_t nbyte); }
+4	STD	POSIX	{ ssize_t write(int fd, const void *buf, size_t nbyte); }
+5	STD	POSIX	{ int open(char *path, int flags, int mode); }
+6	STD	POSIX	{ int close(int fd); }
+etc...
+</pre></blockquote></div></td></tr></table>
+<p>It is the leftmost column that tells us the number to place in <span class="register"><code><b>EAX</b></code></span>.</p>
+<p>The rightmost column tells us what parameters to <span class="opcode"><code><b>push</b></code></span>. They are <span class="opcode"><code><b>push</b></code></span>ed <i>from right to left</i>.</p>
+<blockquote>
+<b class="example">E<small>XAMPLE</small> 2.1:</b> For example, to <span class="function"><code><b>open</b></code></span> a file, we need to <span class="opcode"><code><b>push</b></code></span> the <span class="varname"><code><b>mode</b></code></span> first, then <span class="varname"><code><b>flags</b></code></span>, then the address at which the <span class="varname"><code><b>path</b></code></span> is stored.</blockquote>
+</div>
+</div>
+</div>
+<div class="chapter"><a name="return-values" />
+<h1>Chapter 3 – Return Values</h1>
+<p>A system call would not be useful most of the time if it did not return some kind of a value: The file descriptor of an open file, the number of bytes read to a buffer, the system time, etc.</p>
+<p>Additionally, the system needs to inform us if an error occurs: A file does not exist, system resources are exhausted, we passed an invalid parameter, etc.</p>
+<div class="sect1"><a name="man-pages" />
+<h2>3.1. Man Pages</h2>
+<p>The traditional place to look for information about various system calls under Unix systems are the man pages. FreeBSD describes its system calls in section 2, sometimes in section 3.</p>
+<p>For example, <tt><b>open(2)</b></tt> says:</p>
+<blockquote><p>If successful, <span class="function"><code><b>open()</b></code></span> returns a non-negative integer, termed a file descriptor. It returns <span class="varname"><code><b>-1</b></code></span> on failure, and sets <span class="varname"><code><b>errno</b></code></span> to indicate the error.</p></blockquote>
+<p>The assembly language programmer new to Unix and FreeBSD will immediately ask the puzzling question: Where is <span class="varname"><code><b>errno</b></code></span> and how do I get to it?</p>
+<blockquote>
+<b>N.B.:</b> The information presented in the man pages applies to <small>C</small> programs. The assembly language programmer needs additional information.</blockquote>
+</div>
+<div class="sect1"><a name="where-return-values" />
+<h2>3.2. Where Are the Return Values?</h2>
+<p>Unfortunately, it depends... For most system calls it is in <span class="register"><code><b>EAX</b></code></span>, but not for all. A good rule of thumb, when working with a system call for the first time, is to look for the return value in <span class="register"><code><b>EAX</b></code></span>. If it is not there, you need further research.</p>
+<blockquote>
+<b>N.B.:</b> I am aware of one system call that returns the value in <span class="register"><code><b>EDX</b></code></span>: <span class="syscall"><code><b>SYS_fork</b></code></span>. All others I have worked with use <span class="register"><code><b>EAX</b></code></span>. But I have not worked with them all yet.</blockquote>
+<blockquote>
+<b>T<small>IP</small>:</b> If you cannot find the answer here or anywhere else, study <span class="application"><tt><b>libc</b></tt></span> source code and see how it interfaces with the kernel.</blockquote>
+</div>
+<div class="sect1"><a name="where-errno" />
+<h2>3.3. Where Is <span class="varname"><code><b>errno</b></code></span>?</h2>
+<p>Actually, nowhere...</p>
+<p><span class="varname"><code><b>errno</b></code></span> is part of the <small>C</small> language, not the Unix kernel. When accessing kernel services directly, the error code is returned in <span class="register"><code><b>EAX</b></code></span>, the same register the proper return value generally ends up in.</p>
+<p>This makes perfect sense. If there is no error, there is no error code. If there is an error, there is no return value. One register can contain either.</p>
+</div>
+<div class="sect1"><a name="how-to-know-error" />
+<h2>3.4. Determining an Error Occurred</h2>
+<p>When using the standard FreeBSD calling convention, the <span class="register"><code><b>carry flag</b></code></span> is cleared upon success, set upon failure.</p>
+<p>When using the Linux emulation mode, the signed value in <span class="register"><code><b>EAX</b></code></span> is non-negative upon success, and contains the return value. In case of an error, the value is negative, i.e., <span class="varname"><code><b>-errno</b></code></span>.</p>
+</div>
+</div>
+<div class="chapter"><a name="portable-code" />
+<h1>Chapter 4 – Creating Portable Code</h1>
+<p>Portability is generally not one of the strengths of assembly language. Yet, writing assembly language programs for different platforms is possible, especially with <span class="application"><tt><b>nasm</b></tt></span>. I have written assembly language libraries that can be assembled for such different operating systems as Windows and FreeBSD.</p>
+<p>It is all the more possible when you want your code to run on two platforms which, while different, are based on similar architectures.</p>
+<p>For example, FreeBSD is Unix, Linux is Unix-like. I only mentioned three differences between them (from an assembly language programmer’s perspective): The calling convention, the function numbers, and the way of returning values.</p>
+<div class="sect1"><a name="deal-with-function-numbers" /><h2>4.1. Dealing with Function Numbers</h2>
+<p>In many cases the function numbers are the same. However, even when they are not, the problem is easy to deal with: Instead of using numbers in your code, use constants which you have declared differently depending on the target architecture:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%ifdef	LINUX
+%define	SYS_execve	11
+%else
+%define	SYS_execve	59
+%endif
+</pre></blockquote></div></td></tr></table>
+</div>
+<div class="sect1"><a name="deal-with-geneva" /><h2>4.2. Dealing with Conventions</h2>
+<p>Both, the calling convention, and the return value (the <span class="varname"><code><b>errno</b></code></span> problem) can be resolved with macros:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%ifdef	LINUX
+
+%macro	system	0
+	call	kernel
+%endmacro
+
+align 4
+kernel:
+	push	ebx
+	push	ecx
+	push	edx
+	push	esi
+	push	edi
+	push	ebp
+
+	mov	ebx, [esp+32]
+	mov	ecx, [esp+36]
+	mov	edx, [esp+40]
+	mov	esi, [esp+44]
+	mov	ebp, [esp+48]
+	int	80h
+
+	pop	ebp
+	pop	edi
+	pop	esi
+	pop	edx
+	pop	ecx
+	pop	ebx
+
+	or	eax, eax
+	js	.errno
+	clc
+	ret
+
+.errno:
+	neg	eax
+	stc
+	ret
+
+%else
+
+%macro	system	0
+	int	80h
+%endmacro
+
+%endif
+</pre></blockquote></div></td></tr></table>
+</div>
+<div class="sect1"><a name="deal-with-other-portability" /><h2>4.3. Dealing with Other Portability Issues</h2>
+<p>The above solutions can handle most cases of writing code portable between FreeBSD and Linux. Nevertheless, with some kernel services the differences are deeper.</p>
+<p>In that case, you need to write two different handlers for those particular system calls, and use conditional assembly. Luckily, most of your code does something other than calling the kernel, so usually you will only need a few such conditional sections in your code.</p>
+</div>
+<div class="sect1"><a name="portable-library" /><h2>4.4. Using a Library</h2>
+<p>You can avoid portability issues in your main code altogether by writing a library of system calls. Create a separate library for FreeBSD, a different one for Linux, and yet other libraries for more operating systems.</p>
+<p>In your library, write a separate function (or procedure, if you prefer the traditional assembly language terminology) for each system call. Use the <small>C</small> calling convention of passing parameters. But still use <span class="register"><code><b>EAX</b></code></span> to pass the call number in. In that case, your FreeBSD library can be very simple, as many seemingly different functions can be just labels to the same code:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+sys.open:
+sys.close:
+[etc...]
+	int	80h
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>Your Linux library will require more different functions. But even here you can group system calls using the same number of parameters:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+sys.exit:
+sys.close:
+[etc... one-parameter functions]
+	push	ebx
+	mov	ebx, [esp+12]
+	int	80h
+	pop	ebx
+	jmp	sys.return
+
+...
+
+sys.return:
+	or	eax, eax
+	js	sys.err
+	clc
+	ret
+
+sys.err:
+	neg	eax
+	stc
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>The library approach may seem inconvenient at first because it requires you to produce a separate file your code depends on. But it has many advantages: For one, you only need to write it once and can use it for all your programs. You can even let other assembly language programmers use it, or perhaps use one written by someone else. But perhaps the greatest advantage of the library is that your code can be ported to other systems, even by other programmers, by simply writing a new library without any changes to your code.</p>
+<p>If you do not like the idea of having a library, you can at least place all your system calls in a separate assembly language file and link it with your main program. Here, again, all porters have to do is create a new object file to link with your main program.</p>
+</div>
+<div class="sect1"><a name="portable-include" />
+<h2>4.5. Using an Include File</h2>
+<p>If you are releasing your software as (or with) source code, you can use macros and place them in a separate file, which you include in your code.</p>
+<p>Porters of your software will simply write a new include file. No library or external object file is necessary, yet your code is portable without any need to edit the code.</p>
+<blockquote>
+<b>N.B.:</b> This is the approach we will use throughout this tutorial. We will name our include file <span class="filename"><tt>system.inc</tt></span>, and add to it whenever we deal with a new system call.</blockquote>
+<p>We can start our <span class="filename"><tt>system.inc</tt></span> by declaring the standard file descriptors:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%define	stdin	0
+%define	stdout	1
+%define	stderr	2
+</pre></blockquote></div></td></tr></table>
+<p>Next, we create a symbolic name for each system call:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%define	SYS_nosys	0
+%define	SYS_exit	1
+%define	SYS_fork	2
+%define	SYS_read	3
+%define	SYS_write	4
+; [etc...]
+</pre></blockquote></div></td></tr></table>
+<p>We add a short, non-global procedure with a long name, so we do not accidentally reuse the name in our code:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+section	.text
+align 4
+access.the.bsd.kernel:
+	int	80h
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>We create a macro which takes one argument, the syscall number:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%macro	system	1
+	mov	eax, %1
+	call	access.the.bsd.kernel
+%endmacro
+</pre></blockquote></div></td></tr></table>
+<p>Finally, we create macros for each syscall. These macros take no arguments.</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%macro	sys.exit	0
+	system	SYS_exit
+%endmacro
+
+%macro	sys.fork	0
+	system	SYS_fork
+%endmacro
+
+%macro	sys.read	0
+	system	SYS_read
+%endmacro
+
+%macro	sys.write	0
+	system	SYS_write
+%endmacro
+
+; [etc...]
+</pre></blockquote></div></td></tr></table>
+<p>Go ahead, enter it into your editor and save it as <span class="filename"><tt>system.inc</tt></span>. We will add more to it as we discuss more syscalls.</p>
+</div>
+</div>
+<div class="chapter"><a name="first-program" />
+<h1>Chapter 5 – Our First Program</h1>
+<p>We are now ready for our first program, the mandatory <span class="application"><tt><b>Hello, World!</b></tt></span></p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+ 1:	%include	'system.inc'
+ 2:
+ 3:	section	.data
+ 4:	hello	db	'Hello, World!', 0Ah
+ 5:	hbytes	equ	hello
+ 6:
+ 7:	section	.text
+ 8:	global	_start
+ 9:	_start:
+10:	push	dword hbytes
+11:	push	dword hello
+12:	push	dword stdout
+13:	sys.write
+14:
+15:	push	dword 0
+16:	sys.exit
+</pre></blockquote></div></td></tr></table>
+<p>Here is what it does: Line 1 includes the defines, the macros, and the code from <span class="filename"><tt>system.inc</tt></span>.</p>
+<p>Lines 3-5 are the data: Line 3 starts the data section/segment. Line 4 contains the string "Hello, World!" followed by a new line (<span class="constant"><code><b>0Ah</b></code></span>). Line 5 creates a constant that contains the length of the string from line 4 in bytes.</p>
+<p>Lines 7-16 contain the code. Note that FreeBSD uses the <i>elf</i> file format for its executables, which requires every program to start at the point labeled <span class="varname"><code><b>_start</b></code></span> (or, more precisely, the linker expects that). This label has to be global.</p>
+<p>Lines 10-13 ask the system to write <span class="varname"><code><b>hbytes</b></code></span> bytes of the <span class="varname"><code><b>hello</b></code></span> string to <span class="varname"><code><b>stdout</b></code></span>.</p>
+<p>Lines 15-16 ask the system to end the program with the return value of <span class="constant"><code><b>0</b></code></span>. The <span class="syscall"><code><b>SYS_exit</b></code></span> syscall never returns, so the code ends there.</p>
+<blockquote>
+<b>N.B.:</b> If you have come to Unix from <small>MS DOS</small> assembly language background, you may be used to writing directly to the video hardware. You will never have to worry about this in FreeBSD, or any other flavor of Unix. As far as you are concerned, you are writing to a file known as <span class="filename"><tt>stdout</tt></span>. This can be the video screen, or a <span class="application"><tt><b>telnet</b></tt></span> terminal, or an actual file, or even the input of another program. Which one it is, is for the system to figure out.</blockquote>
+<div class="sect1"><a name="assemble-1" /><h2>5.1. Assembling the Code</h2>
+<p>Type the code (except the line numbers) in an editor, and save it in a file named <span class="filename"><tt>hello.asm</tt></span>. You need <span class="application"><tt><b>nasm</b></tt></span> to assemble it.</p>
+<div class="sect2"><a name="get-nasm" /><h3>5.1.1. Installing <span class="application"><tt><b>nasm</b></tt></span></h3>
+<p>If you do not have <span class="application"><tt><b>nasm</b></tt></span>, type:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>su</b></kbd></span>
+Password:<span class="userinput"><kbd><b><span class="replaceable"><i>your root password</i></span></b></kbd></span>
+<span class="prompt"><tt>#</tt></span> <span class="userinput"><kbd><b>cd /usr/ports/devel/nasm</b></kbd></span>
+<span class="prompt"><tt>#</tt></span> <span class="userinput"><kbd><b>make install</b></kbd></span>
+<span class="prompt"><tt>#</tt></span> <span class="userinput"><kbd><b>exit</b></kbd></span>
+<span class="prompt"><tt>%</tt></span>
+</pre></blockquote></div></td></tr></table>
+<p>You may type <span class="userinput"><kbd><b>make install clean</b></kbd></span> instead of just <span class="userinput"><kbd><b>make install</b></kbd></span> if you do not want to keep <span class="application"><tt><b>nasm</b></tt></span> source code.</p>
+<p>Either way, FreeBSD will automatically download <span class="application"><tt><b>nasm</b></tt></span> from the Internet, compile it, and install it on your system.</p>
+<blockquote>
+<b>N.B.:</b> If your system is not FreeBSD, you need to get <span class="application"><tt><b>nasm</b></tt></span> from its <a target="_top" href="http://www.web-sites.co.uk/nasm/">home page</a>. You can still use it to assemble FreeBSD code.</blockquote>
+<p>Now you can assemble, link, and run the code:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>nasm -f elf hello.asm</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>ld -s -o hello hello.o</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./hello</b></kbd></span>
+Hello, World!
+<span class="prompt"><tt>%</tt></span>
+</pre></blockquote></div></td></tr></table>
+</div>
+</div>
+</div>
+<div class="chapter"><a name="unix-filters" />
+<h1>Chapter 6 – Writing Unix Filters</h1>
+<p>A common type of Unix application is a filter—a program that reads data from the <span class="filename"><tt>stdin</tt></span>, processes it somehow, then writes the result to <span class="filename"><tt>stdout</tt></span>.</p>
+<p>In this chapter, we shall develop a simple filter, and learn how to read from <span class="filename"><tt>stdin</tt></span> and write to <span class="filename"><tt>stdout</tt></span>. This filter will convert each byte of its input into a hexadecimal number followed by a blank space.</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%include	'system.inc'
+
+section	.data
+hex	db	'0123456789ABCDEF'
+buffer	db	0, 0, ' '
+
+section	.text
+global	_start
+_start:
+	; read a byte from stdin
+	push	dword 1
+	push	dword buffer
+	push	dword stdin
+	sys.read
+	add	esp, byte 12
+	or	eax, eax
+	je	.done
+
+	; convert it to hex
+	movzx	eax, byte [buffer]
+	mov	edx, eax
+	shr	dl, 4
+	mov	dl, [hex+edx]
+	mov	[buffer], dl
+	and	al, 0Fh
+	mov	al, [hex+eax]
+	mov	[buffer+1], al
+
+	; print it
+	push	dword 3
+	push	dword buffer
+	push	dword stdout
+	sys.write
+	add	esp, byte 12
+	jmp	short _start
+
+.done:
+	push	dword 0
+	sys.exit
+</pre></blockquote></div></td></tr></table>
+<p>In the data section we create an array called <span class="varname"><code><b>hex</b></code></span>. It contains the 16 hexadecimal digits in ascending order. The array is followed by a buffer which we will use for both input and output. The first two bytes of the buffer are initially set to <span class="constant"><code><b>0</b></code></span>. This is where we will write the two hexadecimal digits (the first byte also is where we will read the input). The third byte is a space.</p>
+<p>The code section consists of four parts: Reading the byte, converting it to a hexadecimal number, writing the result, and eventually exiting the program.</p>
+<p>To read the byte, we ask the system to read one byte from <span class="filename"><tt>stdin</tt></span>, and store it in the first byte of the <span class="varname"><code><b>buffer</b></code></span>. The system returns the number of bytes read in <span class="register"><code><b>EAX</b></code></span>. This will be <span class="constant"><code><b>1</b></code></span> while data is coming, or <span class="constant"><code><b>0</b></code></span>, when no more input data is available. Therefore, we check the value of <span class="register"><code><b>EAX</b></code></span>. If it is <span class="constant"><code><b>0</b></code></span>, we jump to <span class="varname"><code><b>.done</b></code></span>, otherwise we continue.</p>
+<blockquote>
+<b>N.B.:</b> For simplicity sake, we are ignoring the possibility of an error condition at this time.</blockquote>
+<p>The hexadecimal conversion reads the byte from the <span class="varname"><code><b>buffer</b></code></span> into <span class="register"><code><b>EAX</b></code></span>, or actually just <span class="register"><code><b>AL</b></code></span>, while clearing the remaining bits of <span class="register"><code><b>EAX</b></code></span> to zeros. We also copy the byte to <span class="register"><code><b>EDX</b></code></span> because we need to convert the upper four bits (nibble) separately from the lower four bits. We store the result in the first two bytes of the buffer.</p>
+<p>Next, we ask the system to write the three bytes of the buffer, i.e., the two hexadecimal digits and the blank space, to <span class="filename"><tt>stdout</tt></span>. We then jump back to the beginning of the program and process the next byte.</p>
+<p>Once there is no more input left, we ask the system to exit our program, returning a zero, which is the traditional value meaning the program was successful.</p>
+<p>Go ahead, and save the code in a file named <span class="filename"><tt>hex.asm</tt></span>, then type the following (the <span class="userinput"><kbd><b>^D</b></kbd></span> means press the control key and type <span class="userinput"><kbd><b>D</b></kbd></span> while holding the control key down):</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>nasm -f elf hex.asm</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>ld -s -o hex hex.o</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./hex</b></kbd></span>
+<span class="userinput"><kbd><b>Hello, World!</b></kbd></span>
+48 65 6C 6C 6F 2C 20 57 6F 72 6C 64 21 0A <span class="userinput"><kbd><b>Here I come!</b></kbd></span>
+48 65 72 65 20 49 20 63 6F 6D 65 21 0A <span class="userinput"><kbd><b>^D</b></kbd></span> <span class="prompt"><tt>%</tt></span>
+</pre></blockquote></div></td></tr></table>
+<blockquote>
+<b>N.B.:</b> If you are migrating to Unix from <small>MS DOS</small>, you may be wondering why each line ends with <span class="constant"><code><b>0A</b></code></span> instead of <span class="constant"><code><b>0D 0A</b></code></span>. This is because Unix does not use the cr/lf convention, but a “new line” convention, which is <span class="constant"><code><b>0A</b></code></span> in hexadecimal.</blockquote>
+<p>Can we improve this? Well, for one, it is a bit confusing because once we have converted a line of text, our input no longer starts at the begining of the line. We can modify it to print a new line instead of a space after each <span class="constant"><code><b>0A</b></code></span>:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%include	'system.inc'
+
+section	.data
+hex	db	'0123456789ABCDEF'
+buffer	db	0, 0, ' '
+
+section	.text
+global	_start
+_start:
+	mov	cl, ' '
+
+.loop:
+	; read a byte from stdin
+	push	dword 1
+	push	dword buffer
+	push	dword stdin
+	sys.read
+	add	esp, byte 12
+	or	eax, eax
+	je	.done
+
+	; convert it to hex
+	movzx	eax, byte [buffer]
+	mov	[buffer+2], cl
+	cmp	al, 0Ah
+	jne	.hex
+	mov	[buffer+2], al
+
+.hex:
+	mov	edx, eax
+	shr	dl, 4
+	mov	dl, [hex+edx]
+	mov	[buffer], dl
+	and	al, 0Fh
+	mov	al, [hex+eax]
+	mov	[buffer+1], al
+
+	; print it
+	push	dword 3
+	push	dword buffer
+	push	dword stdout
+	sys.write
+	add	esp, byte 12
+	jmp	short .loop
+
+.done:
+	push	dword 0
+	sys.exit
+</pre></blockquote></div></td></tr></table>
+<p>We have stored the space in the <span class="register"><code><b>CL</b></code></span> register. We can do this safely because, unlike Microsoft Windows, Unix system calls do not modify the value of any register they do not use to return a value in.</p>
+<p>That means we only need to set <span class="register"><code><b>CL</b></code></span> once. We have, therefore, added a new label <span class="varname"><code><b>.loop</b></code></span> and jump to it for the next byte instead of jumping at <span class="varname"><code><b>_start</b></code></span>. We have also added the <span class="varname"><code><b>.hex</b></code></span> label so we can either have a blank space or a new line as the third byte of the <span class="varname"><code><b>buffer</b></code></span>.</p>
+<p>Once you have changed <span class="filename"><tt>hex.asm</tt></span> to reflect these changes, type:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>nasm -f elf hex.asm</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>ld -s -o hex hex.o</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./hex</b></kbd></span>
+<span class="userinput"><kbd><b>Hello, World!</b></kbd></span>
+48 65 6C 6C 6F 2C 20 57 6F 72 6C 64 21 0A
+<span class="userinput"><kbd><b>Here I come!</b></kbd></span>
+48 65 72 65 20 49 20 63 6F 6D 65 21 0A
+<span class="userinput"><kbd><b>^D</b></kbd></span> <span class="prompt"><tt>%</tt></span>
+</pre></blockquote></div></td></tr></table>
+<p>That looks better. But this code is quite inefficient! We are making a system call for every single byte twice (once to read it, another time to write the output).</p>
+</div>
+<div class="chapter"><a name="buffered-io" />
+<h1>Chapter 7 – Buffered Input and Output</h1>
+<p>We can improve the efficiency of our code by buffering our input and output. We create an input buffer and read a whole sequence of bytes at one time. Then we fetch them one by one from the buffer.</p>
+<p>We also create an output buffer. We store our output in it until it is full. At that time we ask the kernel to write the contents of the buffer to <span class="filename"><tt>stdout</tt></span>.</p>
+<p>The program ends when there is no more input. But we still need to ask the kernel to write the contents of our output buffer to <span class="filename"><tt>stdout</tt></span> one last time, otherwise some of our output would make it to the output buffer, but never be sent out. Do not forget that, or you will be wondering why some of your output is missing.</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%include	'system.inc'
+
+%define	BUFSIZE	2048
+
+section	.data
+hex	db	'0123456789ABCDEF'
+
+section .bss
+ibuffer	resb	BUFSIZE
+obuffer	resb	BUFSIZE
+
+section	.text
+global	_start
+_start:
+	sub	eax, eax
+	sub	ebx, ebx
+	sub	ecx, ecx
+	mov	edi, obuffer
+
+.loop:
+	; read a byte from stdin
+	call	getchar
+
+	; convert it to hex
+	mov	dl, al
+	shr	al, 4
+	mov	al, [hex+eax]
+	call	putchar
+
+	mov	al, dl
+	and	al, 0Fh
+	mov	al, [hex+eax]
+	call	putchar
+
+	mov	al, ' '
+	cmp	dl, 0Ah
+	jne	.put
+	mov	al, dl
+
+.put:
+	call	putchar
+	jmp	short .loop
+
+align 4
+getchar:
+	or	ebx, ebx
+	jne	.fetch
+
+	call	read
+
+.fetch:
+	lodsb
+	dec	ebx
+	ret
+
+read:
+	push	dword BUFSIZE
+	mov	esi, ibuffer
+	push	esi
+	push	dword stdin
+	sys.read
+	add	esp, byte 12
+	mov	ebx, eax
+	or	eax, eax
+	je	.done
+	sub	eax, eax
+	ret
+
+align 4
+.done:
+	call	write		; flush output buffer
+	push	dword 0
+	sys.exit
+
+align 4
+putchar:
+	stosb
+	inc	ecx
+	cmp	ecx, BUFSIZE
+	je	write
+	ret
+
+align 4
+write:
+	sub	edi, ecx	; start of buffer
+	push	ecx
+	push	edi
+	push	dword stdout
+	sys.write
+	add	esp, byte 12
+	sub	eax, eax
+	sub	ecx, ecx	; buffer is empty now
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>We now have a third section in the source code, named <span class="varname"><code><b>.bss</b></code></span>. This section is not included in our executable file, and, therefore, cannot be initialized. We use <span class="opcode"><code><b>resb</b></code></span> instead of <span class="opcode"><code><b>db</b></code></span>. It simply reserves the requested size of uninitialized memory for our use.</p>
+<p>We take advantage of the fact that the system does not modify the registers: We use registers for what, otherwise, would have to be global variables stored in the <span class="varname"><code><b>.data</b></code></span> section. This is also why the Unix convention of passing parameters to system calls on the stack is superior to the Microsoft convention of passing them in the registers: We can keep the registers for our own use.</p>
+<p>We use <span class="register"><code><b>EDI</b></code></span> and <span class="register"><code><b>ESI</b></code></span> as pointers to the next byte to be read from or written to. We use <span class="register"><code><b>EBX</b></code></span> and <span class="register"><code><b>ECX</b></code></span> to keep count of the number of bytes in the two buffers, so we know when to dump the output to, or read more input from, the system.</p>
+<p>Let us see how it works now:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>nasm -f elf hex.asm</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>ld -s -o hex hex.o</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./hex</b></kbd></span>
+<span class="userinput"><kbd><b>Hello, World!</b></kbd></span>
+<span class="userinput"><kbd><b>Here I come!</b></kbd></span>
+48 65 6C 6C 6F 2C 20 57 6F 72 6C 64 21 0A
+48 65 72 65 20 49 20 63 6F 6D 65 21 0A
+<span class="userinput"><kbd><b>^D</b></kbd></span> <span class="prompt"><tt>%</tt></span>
+</pre></blockquote></div></td></tr></table>
+<p>Not what you expected? The program did not print the output until we pressed <span class="userinput"><kbd><b>^D</b></kbd></span>. That is easy to fix by inserting three lines of code to write the output every time we have converted a new line to <span class="constant"><code><b>0A</b></code></span>. I have marked the three lines with &gt; (do not copy the &gt; in your <span class="filename"><tt>hex.asm</tt></span>).</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%include	'system.inc'
+
+%define	BUFSIZE	2048
+
+section	.data
+hex	db	'0123456789ABCDEF'
+
+section .bss
+ibuffer	resb	BUFSIZE
+obuffer	resb	BUFSIZE
+
+section	.text
+global	_start
+_start:
+	sub	eax, eax
+	sub	ebx, ebx
+	sub	ecx, ecx
+	mov	edi, obuffer
+
+.loop:
+	; read a byte from stdin
+	call	getchar
+
+	; convert it to hex
+	mov	dl, al
+	shr	al, 4
+	mov	al, [hex+eax]
+	call	putchar
+
+	mov	al, dl
+	and	al, 0Fh
+	mov	al, [hex+eax]
+	call	putchar
+
+	mov	al, ' '
+	cmp	dl, 0Ah
+	jne	.put
+	mov	al, dl
+
+.put:
+	call	putchar
+>	cmp	al, 0Ah
+>	jne	.loop
+>	call	write
+	jmp	short .loop
+
+align 4
+getchar:
+	or	ebx, ebx
+	jne	.fetch
+
+	call	read
+
+.fetch:
+	lodsb
+	dec	ebx
+	ret
+
+read:
+	push	dword BUFSIZE
+	mov	esi, ibuffer
+	push	esi
+	push	dword stdin
+	sys.read
+	add	esp, byte 12
+	mov	ebx, eax
+	or	eax, eax
+	je	.done
+	sub	eax, eax
+	ret
+
+align 4
+.done:
+	call	write		; flush output buffer
+	push	dword 0
+	sys.exit
+
+align 4
+putchar:
+	stosb
+	inc	ecx
+	cmp	ecx, BUFSIZE
+	je	write
+	ret
+
+align 4
+write:
+	sub	edi, ecx	; start of buffer
+	push	ecx
+	push	edi
+	push	dword stdout
+	sys.write
+	add	esp, byte 12
+	sub	eax, eax
+	sub	ecx, ecx	; buffer is empty now
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>Now, let us see how it works:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>nasm -f elf hex.asm</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>ld -s -o hex hex.o</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./hex</b></kbd></span>
+<span class="userinput"><kbd><b>Hello, World!</b></kbd></span>
+48 65 6C 6C 6F 2C 20 57 6F 72 6C 64 21 0A
+<span class="userinput"><kbd><b>Here I come!</b></kbd></span>
+48 65 72 65 20 49 20 63 6F 6D 65 21 0A
+<span class="userinput"><kbd><b>^D</b></kbd></span> <span class="prompt"><tt>%</tt></span>
+</pre></blockquote></div></td></tr></table>
+<p>Not bad for a 644-byte executable, is it!</p>
+<blockquote>
+<b>N.B.:</b> This approach to buffered input/output still contains a hidden danger. I will discuss—and fix—it later, when I talk about the <a href="#buffered-dark-side">dark side of buffering</a>.</blockquote>
+<div class="sect1"><a name="ungetc" />
+<h2>7.1. How to Unread a Character</h2>
+<blockquote>
+<b>W<small>ARNING</small>:</b> This may be a somewhat advanced topic, mostly of interest to programmers familiar with the theory of compilers. If you wish, you may <a href="#command-line">skip to the next chapter</a>, and perhaps read this later.</blockquote>
+<p>While our sample program does not require it, more sophisticated filters often need to look ahead. In other words, they may need to see what the next character is (or even several characters). If the next character is of a certain value, it is part of the token currently being processed. Otherwise, it is not.</p>
+<p>For example, you may be parsing the input stream for a textual string (e.g., when implementing a language compiler): If a character is followed by another character, or perhaps a digit, it is part of the token you are processing. If it is followed by white space, or some other value, then it is not part of the current token.</p>
+<p>This presents an interesting problem: How to return the next character back to the input stream, so it can be read again later?</p>
+<p>One possible solution is to store it in a character variable, then set a flag. We can modify <span class="function"><code><b>getchar</b></code></span> to check the flag, and if it is set, fetch the byte from that variable instead of the input buffer, and reset the flag. But, of course, that slows us down.</p>
+<p>The <small>C</small> language has an <span class="function"><code><b>ungetc()</b></code></span> function, just for that purpose. Is there a quick way to implement it in our code? I would like you to scroll back up and take a look at the <span class="function"><code><b>getchar</b></code></span> procedure and see if you can find a nice and fast solution before reading the next paragraph. Then come back here and see my own solution.</p>
+<p>The key to returning a character back to the stream is in how we are getting the characters to start with:</p>
+<p>First we check if the buffer is empty by testing the value of <span class="register"><code><b>EBX</b></code></span>. If it is zero, we call the <span class="function"><code><b>read</b></code></span> procedure.</p>
+<p>If we do have a character available, we use <span class="opcode"><code><b>lodsb</b></code></span>, then decrease the value of <span class="register"><code><b>EBX</b></code></span>. The <span class="opcode"><code><b>lodsb</b></code></span> instruction is effectively identical to:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	mov	al, [esi]
+	inc	esi
+</pre></blockquote></div></td></tr></table>
+<p>The byte we have fetched remains in the buffer until the next time <span class="function"><code><b>read</b></code></span> is called. We do not know when that happens, but we do know it will not happen until the next call to <span class="function"><code><b>getchar</b></code></span>. Hence, to “return” the last-read byte back to the stream, all we have to do is decrease the value of <span class="register"><code><b>ESI</b></code></span> and increase the value of <span class="register"><code><b>EBX</b></code></span>:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+ungetc:
+	dec	esi
+	inc	ebx
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>But, be careful! We are perfectly safe doing this if our look-ahead is at most one character at a time. If we are examining more than one upcoming character and call <span class="function"><code><b>ungetc</b></code></span> several times in a row, it will work most of the time, but not all the time (and will be tough to debug). Why?</p>
+<p>Because as long as <span class="function"><code><b>getchar</b></code></span> does not have to call <span class="function"><code><b>read</b></code></span>, all of the pre-read bytes are still in the buffer, and our <span class="function"><code><b>ungetc</b></code></span> works without a glitch. But the moment <span class="function"><code><b>getchar</b></code></span> calls <span class="function"><code><b>read</b></code></span>, the contents of the buffer change.</p>
+<p>We can always rely on <span class="function"><code><b>ungetc</b></code></span> working properly on the last character we have read with <span class="function"><code><b>getchar</b></code></span>, but not on anything we have read before that.</p>
+<p>If your program reads more than one byte ahead, you have at least two choices:</p>
+<p>If possible, modify the program so it only reads one byte ahead. This is the simplest solution.</p>
+<p>If that option is not available, first of all determine the maximum number of characters your program needs to return to the input stream at one time. Increase that number slightly, just to be sure, preferably to a multiple of <small>16</small>—so it aligns nicely. Then modify the <span class="varname"><code><b>.bss</b></code></span> section of your code, and create a small “spare” buffer right before your input buffer, something like this:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+section	.bss
+	resb	16	; or whatever the value you came up with
+ibuffer	resb	BUFSIZE
+obuffer	resb	BUFSIZE
+</pre></blockquote></div></td></tr></table>
+<p>You also need to modify your <span class="function"><code><b>ungetc</b></code></span> to pass the value of the byte to unget in <span class="register"><code><b>AL</b></code></span>:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+ungetc:
+	dec	esi
+	inc	ebx
+	mov	[esi], al
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>With this modification, you can call <span class="function"><code><b>ungetc</b></code></span> up to <small>17</small> times in a row safely (the first call will still be within the buffer, the remaining <small>16</small> may be either within the buffer or within the “spare”).</p>
+</div>
+</div>
+<div class="chapter"><a name="command-line" /><h1>Chapter 8 – Command Line Arguments</h1>
+<p>Our <span class="application"><tt><b>hex</b></tt></span> program will be more useful if it can read the names of an input and output file from its command line, i.e., if it can process the command line arguments. But... Where are they?</p>
+<p>Before a Unix system starts a program, it <span class="opcode"><code><b>push</b></code></span>es some data on the stack, then jumps at the <span class="varname"><code><b>_start</b></code></span> label of the program. Yes, I said jumps, not calls. That means the data can be accessed by reading <span class="varname"><code><b>[esp+offset]</b></code></span>, or by simply <span class="opcode"><code><b>pop</b></code></span>ping it.</p>
+<p>The value at the top of the stack contains the number of command line arguments. It is traditionally called <span class="varname"><code><b>argc</b></code></span>, for “argument count.”</p>
+<p>Command line arguments follow next, all <span class="varname"><code><b>argc</b></code></span> of them. These are typically referred to as <span class="varname"><code><b>argv</b></code></span>, for “argument value(s).” That is, we get <span class="varname"><code><b>argv[0]</b></code></span>, <span class="varname"><code><b>argv[1]</b></code></span>, <span class="varname"><code><b>...</b></code></span>, <span class="varname"><code><b>argv[argc-1]</b></code></span>. These are not the actual arguments, but pointers to arguments, i.e., memory addresses of the actual arguments. The arguments themselves are <small>NUL</small>-terminated character strings.</p>
+<p>The <span class="varname"><code><b>argv</b></code></span> list is followed by a <small>NULL</small> pointer, which is simply a <span class="constant"><code><b>0</b></code></span>. There is more, but this is enough for our purposes right now.</p>
+<blockquote>
+<b>N.B.:</b> If you have come from the <small>MS DOS</small> programming environment, the main difference is that each argument is in a separate string. The second difference is that there is no practical limit on how many arguments there can be.</blockquote>
+<p>Armed with this knowledge, we are almost ready for the next version of <span class="filename"><tt>hex.asm</tt></span>. First, however, we need to add a few lines to <span class="filename"><tt>system.inc</tt></span>:</p>
+<p>First, we need to add two new entries to our list of system call numbers:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%define	SYS_open	5
+%define	SYS_close	6
+</pre></blockquote></div></td></tr></table>
+<p>Then we add two new macros at the end of the file:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%macro	sys.open	0
+	system	SYS_open
+%endmacro
+
+%macro	sys.close	0
+	system	SYS_close
+%endmacro
+</pre></blockquote></div></td></tr></table>
+<p>Here, then, is our modified source code:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%include	'system.inc'
+
+%define	BUFSIZE	2048
+
+section	.data
+fd.in	dd	stdin
+fd.out	dd	stdout
+hex	db	'0123456789ABCDEF'
+
+section .bss
+ibuffer	resb	BUFSIZE
+obuffer	resb	BUFSIZE
+
+section	.text
+align 4
+err:
+	push	dword 1		; return failure
+	sys.exit
+
+align 4
+global	_start
+_start:
+	add	esp, byte 8	; discard argc and argv[0]
+
+	pop	ecx
+	jecxz	.init		; no more arguments
+
+	; ECX contains the path to input file
+	push	dword 0		; O_RDONLY
+	push	ecx
+	sys.open
+	jc	err		; open failed
+
+	add	esp, byte 8
+	mov	[fd.in], eax
+
+	pop	ecx
+	jecxz	.init		; no more arguments
+
+	; ECX contains the path to output file
+	push	dword 420	; file mode (644 octal)
+	push	dword 0200h | 0400h | 01h
+	; O_CREAT | O_TRUNC | O_WRONLY
+	push	ecx
+	sys.open
+	jc	err
+
+	add	esp, byte 12
+	mov	[fd.out], eax
+
+.init:
+	sub	eax, eax
+	sub	ebx, ebx
+	sub	ecx, ecx
+	mov	edi, obuffer
+
+.loop:
+	; read a byte from input file or stdin
+	call	getchar
+
+	; convert it to hex
+	mov	dl, al
+	shr	al, 4
+	mov	al, [hex+eax]
+	call	putchar
+
+	mov	al, dl
+	and	al, 0Fh
+	mov	al, [hex+eax]
+	call	putchar
+
+	mov	al, ' '
+	cmp	dl, 0Ah
+	jne	.put
+	mov	al, dl
+
+.put:
+	call	putchar
+	cmp	al, dl
+	jne	.loop
+	call	write
+	jmp	short .loop
+
+align 4
+getchar:
+	or	ebx, ebx
+	jne	.fetch
+
+	call	read
+
+.fetch:
+	lodsb
+	dec	ebx
+	ret
+
+read:
+	push	dword BUFSIZE
+	mov	esi, ibuffer
+	push	esi
+	push	dword [fd.in]
+	sys.read
+	add	esp, byte 12
+	mov	ebx, eax
+	or	eax, eax
+	je	.done
+	sub	eax, eax
+	ret
+
+align 4
+.done:
+	call	write		; flush output buffer
+
+	; close files
+	push	dword [fd.in]
+	sys.close
+
+	push	dword [fd.out]
+	sys.close
+
+	; return success
+	push	dword 0
+	sys.exit
+
+align 4
+putchar:
+	stosb
+	inc	ecx
+	cmp	ecx, BUFSIZE
+	je	write
+	ret
+
+align 4
+write:
+	sub	edi, ecx	; start of buffer
+	push	ecx
+	push	edi
+	push	dword [fd.out]
+	sys.write
+	add	esp, byte 12
+	sub	eax, eax
+	sub	ecx, ecx	; buffer is empty now
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>In our <span class="varname"><code><b>.data</b></code></span> section we now have two new variables, <span class="varname"><code><b>fd.in</b></code></span> and <span class="varname"><code><b>fd.out</b></code></span>. We store the input and output file descriptors here.</p>
+<p>In the <span class="varname"><code><b>.text</b></code></span> section we have replaced the references to <span class="varname"><code><b>stdin</b></code></span> and <span class="varname"><code><b>stdout</b></code></span> with <span class="varname"><code><b>[fd.in]</b></code></span> and <span class="varname"><code><b>[fd.out]</b></code></span>.</p>
+<p>The <span class="varname"><code><b>.text</b></code></span> section now starts with a simple error handler, which does nothing but exit the program with a return value of <span class="constant"><code><b>1</b></code></span>. The error handler is before <span class="varname"><code><b>_start</b></code></span> so we are within a short distance from where the errors occur.</p>
+<p>Naturally, the program execution still begins at <span class="varname"><code><b>_start</b></code></span>. First, we remove <span class="varname"><code><b>argc</b></code></span> and <span class="varname"><code><b>argv[0]</b></code></span> from the stack: They are of no interest to us (in this program, that is).</p>
+<p>We pop <span class="varname"><code><b>argv[1]</b></code></span> to <span class="register"><code><b>ECX</b></code></span>. This register is particularly suited for pointers, as we can handle <small>NULL</small> pointers with <span class="opcode"><code><b>jecxz</b></code></span>. If <span class="varname"><code><b>argv[1]</b></code></span> is not <small>NULL</small>, we try to open the file named in the first argument. Otherwise, we continue the program as before: Reading from <span class="varname"><code><b>stdin</b></code></span>, writing to <span class="varname"><code><b>stdout</b></code></span>. If we fail to open the input file (e.g., it does not exist), we jump to the error handler and quit.</p>
+<p>If all went well, we now check for the second argument. If it is there, we open the output file. Otherwise, we send the output to <span class="varname"><code><b>stdout</b></code></span>. If we fail to open the output file (e.g., it exists and we do not have the write permission), we, again, jump to the error handler.</p>
+<p>The rest of the code is the same as before, except we close the input and output files before exiting, and, as mentioned, we use <span class="varname"><code><b>[fd.in]</b></code></span> and <span class="varname"><code><b>[fd.out]</b></code></span>.</p>
+<p>Our executable is now a whopping 768 bytes long.</p>
+<p>Can we still improve it? Of course! Every program can be improved. Here are a few ideas of what we could do:</p>
+<ul>
+<li><p>Have our error handler print a message to <span class="varname"><code><b>stderr</b></code></span>.</p></li>
+<li><p>Add error handlers to the <span class="function"><code><b>read</b></code></span> and <span class="function"><code><b>write</b></code></span> functions.</p></li>
+<li><p>Close <span class="varname"><code><b>stdin</b></code></span> when we open an input file, <span class="varname"><code><b>stdout</b></code></span> when we open an output file.</p></li>
+<li><p>Add command line switches, such as <span class="parameter"><code><b>-i</b></code></span> and <span class="parameter"><code><b>-o</b></code></span>, so we can list the input and output files in any order, or perhaps read from <span class="varname"><code><b>stdin</b></code></span> and write to a file.</p></li>
+<li><p>Print a usage message if command line arguments are incorrect.</p></li>
+</ul>
+<p>I shall leave these enhancements as an exercise to the reader: You already know everything you need to know to implement them.</p>
+</div>
+<div class="chapter"><a name="environment" />
+<h1>Chapter 9 – Unix Environment</h1>
+<p>An important Unix concept is the environment, which is defined by <i>environment variables</i>. Some are set by the system, others by you, yet others by the <span class="application"><tt><b>shell</b></tt></span>, or any program that loads another program.</p>
+<div class="sect1"><a name="find-environment" />
+<h2>9.1. How to Find Environment Variables</h2>
+<p>I said earlier that when a program starts executing, the stack contains <span class="varname"><code><b>argc</b></code></span> followed by the <small>NULL</small>-terminated <span class="varname"><code><b>argv</b></code></span> array, followed by something else. The “something else” is the <i>environment</i>, or, to be more precise, a <small>NULL</small>-terminated array of pointers to <i>environment variables</i>. This is often referred to as <span class="varname"><code><b>env</b></code></span>.</p>
+<p>The structure of <span class="varname"><code><b>env</b></code></span> is the same as that of <span class="varname"><code><b>argv</b></code></span>, a list of memory addresses followed by a <small>NULL</small> (<span class="constant"><code><b>0</b></code></span>). In this case, there is no <span class="varname"><code><b>“envc”</b></code></span>—we figure out where the array ends by searching for the final <small>NULL</small>.</p>
+<p>The variables usually come in the <span class="varname"><code><b>name=value</b></code></span> format, but sometimes the <span class="varname"><code><b>=value</b></code></span> part may be missing. We need to account for that possibility.</p>
+</div>
+<div class="sect1"><a name="webvar" />
+<h2>9.2. <tt>webvars</tt></h2>
+<p>I could just show you some code that prints the environment the same way the Unix <span class="application"><tt><b>env</b></tt></span> command does. But I thought it would be more interesting to write a simple assembly language <small>CGI</small> utility.</p>
+<div class="sect2"><a name="cgi" />
+<h3>9.2.1. CGI: A Quick Overview</h3>
+<p>I have a <a target="_top" href="http://www.whizkidtech.redprince.net/cgi-bin/tutorial">detailed <small>CGI</small> tutorial</a> on my web site, but here is a very quick overview of <small>CGI</small>:</p>
+<ul>
+<li><p>The web server communicates with the <small>CGI</small> program by setting <i>environment variables</i>.</p></li>
+<li><p>The <small>CGI</small> program sends its output to <span class="filename"><tt>stdout</tt></span>. The web server reads it from there.</p></li>
+<li><p>It must start with an <small>HTTP</small> header followed by two blank lines.</p></li> <li><p>It then prints the <small>HTML</small> code, or whatever other type of data it is producing.</p></li></ul>
+<blockquote>
+<b>N.B.:</b> While certain <i>environment variables</i> use standard names, others vary, depending on the web server. That makes <span class="application"><tt><b>webvars</b></tt></span> quite a useful diagnostic tool.</blockquote>
+</div>
+<div class="sect2"><a name="webvars-the-code" />
+<h3>9.2.2. The Code</h3>
+<p>Our <span class="application"><tt><b>webvars</b></tt></span> program, then, must send out the <small>HTTP</small> header followed by some <small>HTML</small> mark-up. It then must read the <i>environment variables</i> one by one and send them out as part of the <small>HTML</small> page.</p>
+<p>The code follows. I placed comments and explanations right inside the code:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+;;;;;;; webvars.asm ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Copyright (c) 2000 G. Adam Stanislav
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms, with or without
+; modification, are permitted provided that the following conditions
+; are met:
+; 1. Redistributions of source code must retain the above copyright
+;    notice, this list of conditions and the following disclaimer.
+; 2. Redistributions in binary form must reproduce the above copyright
+;    notice, this list of conditions and the following disclaimer in the
+;    documentation and/or other materials provided with the distribution.
+;
+; THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS AS IS'' AND
+; ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+; ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+; FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+; DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+; OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+; HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+; LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+; OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+; SUCH DAMAGE.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Version 1.0
+;
+; Started:	 8-Dec-2000
+; Updated:	 8-Dec-2000
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+%include	'system.inc'
+
+section	.data
+http	db	'Content-type: text/html', 0Ah, 0Ah
+	db	'&lt;?xml version="1.0" encoding="UTF-8"?&gt;', 0Ah
+	db	'&lt;!DOCTYPE html PUBLIC "-//W3C/DTD XHTML Strict//EN" '
+	db	'"DTD/xhtml1-strict.dtd"&gt;', 0Ah
+	db	'&lt;html xmlns="http://www.w3.org/1999/xhtml" '
+	db	'xml.lang="en" lang="en"&gt;', 0Ah
+	db	'&lt;head&gt;', 0Ah
+	db	'&lt;title&gt;Web Environment&lt;/title&gt;', 0Ah
+	db	'&lt;meta name="author" content="G. Adam Stanislav" /&gt;', 0Ah
+	db	'&lt;/head&gt;', 0Ah, 0Ah
+	db	'&lt;body bgcolor="#ffffff" text="#000000" link="#0000ff" '
+	db	'vlink="#840084" alink="#0000ff"&gt;', 0Ah
+	db	'&lt;div class="webvars"&gt;', 0Ah
+	db	'&lt;h1&gt;Web Environment&lt;/h1&gt;', 0Ah
+	db	'&lt;p&gt;The following &lt;b&gt;environment variables&lt;/b&gt; are defined '
+	db	'on this web server:&lt;/p&gt;', 0Ah, 0Ah
+	db	'&lt;table align="center" width="80" border="0" cellpadding="10" '
+	db	'cellspacing="0" class="webvars"&gt;', 0Ah
+httplen	equ	http
+left	db	'&lt;tr&gt;', 0Ah
+	db	'&lt;td class="name"&gt;&lt;tt&gt;'
+leftlen	equ	left
+middle	db	'&lt;/tt&gt;&lt;/td&gt;', 0Ah
+	db	'&lt;td class="value"&gt;&lt;tt&gt;&lt;b&gt;'
+midlen	equ	middle
+undef	db	'&lt;i&gt;(undefined)&lt;/i&gt;'
+undeflen	equ	undef
+right	db	'&lt;/b&gt;&lt;/tt&gt;&lt;/td&gt;', 0Ah
+	db	'&lt;/tr&gt;', 0Ah
+rightlen	equ	right
+wrap	db	'&lt;/table&gt;', 0Ah
+	db	'&lt;/div&gt;', 0Ah
+	db	'&lt;/body&gt;', 0Ah
+	db	'&lt;/html&gt;', 0Ah, 0Ah
+wraplen	equ	wrap
+
+section	.text
+global	_start
+_start:
+	; First, send out all the http and xhtml stuff that is
+	; needed before we start showing the environment
+	push	dword httplen
+	push	dword http
+	push	dword stdout
+	sys.write
+
+	; Now find how far on the stack the environment pointers
+	; are. We have 12 bytes we have pushed before "argc"
+	mov	eax, [esp+12]
+
+	; We need to remove the following from the stack:
+	;
+	;	The 12 bytes we pushed for sys.write
+	;	The  4 bytes of argc
+	;	The EAX*4 bytes of argv
+	;	The  4 bytes of the NULL after argv
+	;
+	; Total:
+	;	20 + eax * 4
+	;
+	; Because stack grows down, we need to ADD that many bytes
+	; to ESP.
+	lea	esp, [esp+20+eax*4]
+	cld		; This should already be the case, but let's be sure.
+
+	; Loop through the environment, printing it out
+.loop:
+	pop	edi
+	or	edi, edi	; Done yet?
+	je	near .wrap
+
+	; Print the left part of HTML
+	push	dword leftlen
+	push	dword left
+	push	dword stdout
+	sys.write
+
+	; It may be tempting to search for the '=' in the env string next.
+	; But it is possible there is no '=', so we search for the
+	; terminating NUL first.
+	mov	esi, edi	; Save start of string
+	sub	ecx, ecx
+	not	ecx		; ECX = FFFFFFFF
+	sub	eax, eax
+repne	scasb
+	not	ecx		; ECX = string length + 1
+	mov	ebx, ecx	; Save it in EBX
+
+	; Now is the time to find '='
+	mov	edi, esi	; Start of string
+	mov	al, '='
+repne	scasb
+	not	ecx
+	add	ecx, ebx	; Length of name
+
+	push	ecx
+	push	esi
+	push	dword stdout
+	sys.write
+
+	; Print the middle part of HTML table code
+	push	dword midlen
+	push	dword middle
+	push	dword stdout
+	sys.write
+
+	; Find the length of the value
+	not	ecx
+	lea	ebx, [ebx+ecx-1]
+
+	; Print "undefined" if 0
+	or	ebx, ebx
+	jne	.value
+
+	mov	ebx, undeflen
+	mov	edi, undef
+
+.value:
+	push	ebx
+	push	edi
+	push	dword stdout
+	sys.write
+
+	; Print the right part of the table row
+	push	dword rightlen
+	push	dword right
+	push	dword stdout
+	sys.write
+
+	; Get rid of the 60 bytes we have pushed
+	add	esp, byte 60
+
+	; Get the next variable
+	jmp	.loop
+
+.wrap:
+	; Print the rest of HTML
+	push	dword wraplen
+	push	dword wrap
+	push	dword stdout
+	sys.write
+
+	; Return success
+	push	dword 0
+	sys.exit
+</pre></blockquote></div></td></tr></table>
+<p>This code produces a 1,396-byte executable. Most of it is data, i.e., the <small>HTML</small> mark-up we need to send out.</p>
+<p>Assemble and link it as usual:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre><span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>nasm -f elf webvars.asm</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>ld -s -o webvars webvars.o</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>To use it, you need to upload <span class="filename"><tt>webvars</tt></span> to your web server. Depending on how your web server is set up, you may have to store it in a special <span class="filename"><tt>cgi-bin</tt></span> directory, or perhaps rename it with a <span class="filename"><tt>.cgi</tt></span> extension.</p>
+<p>Then you need to use your browser to view its output. To see its output on my web server, please go to <a target="_top" href="http://www.int80h.org/webvars/"><span class="filename"><tt>http://www.int80h.org/webvars/</tt></span></a>. If curious about the additional environment variables present in a password protected web directory, go to <a target="_top" href="http://www.int80h.org/private/"><span class="filename"><tt>http://www.int80h.org/private/</tt></span></a>, using the name <span class="userinput"><kbd><b>asm</b></kbd></span> and password <span class="userinput"><kbd><b>programmer</b></kbd></span>.</p>
+</div>
+</div>
+</div>
+<div class="chapter"><a name="files" />
+<h1>Chapter 10 – Working with Files</h1>
+<p>We have already done some basic file work: We know how to open and close them, how to read and write them using buffers. But Unix offers much more functionality when it comes to files. We will examine some of it in this section, and end up with a nice file conversion utility.</p>
+<p>Indeed, let us start at the end, that is, with the file conversion utility. It always makes programming easier when we know from the start what the end product is supposed to do.</p>
+<p>One of the first programs I wrote for Unix was <a target="_top" href="ftp://ftp.int80h.org/unix/tuc/"><span class="application"><tt><b>tuc</b></tt></span></a>, a text-to-Unix file converter. It converts a text file from other operating systems to a Unix text file. In other words, it changes from different kind of line endings to the newline convention of Unix. It saves the output in a different file. Optionally, it converts a Unix text file to a <small>DOS</small> text file.</p>
+<p>I have used <span class="application"><tt><b>tuc</b></tt></span> extensively, but always only to convert from some other <small>OS</small> to Unix, never the other way. I have always wished it would just overwrite the file instead of me having to send the output to a different file. Most of the time, I end up using it like this:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>tuc <span class="replaceable"><i>myfile tempfile</i></span></b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>mv <span class="replaceable"><i>tempfile myfile</i></span></b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>It would be nice to have a <span class="application"><tt><b>ftuc</b></tt></span>, i.e., <i>fast tuc</i>, and use it like this:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>ftuc <span class="replaceable"><i>myfile</i></span></b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>In this chapter, then, we will write <span class="application"><tt><b>ftuc</b></tt></span> in assembly language (the original <span class="application"><tt><b>tuc</b></tt></span> is in <small>C</small>), and study various file-oriented kernel services in the process.</p>
+<p>At first sight, such a file conversion is very simple: All you have to do is strip the carriage returns, right?</p>
+<p>If you answered yes, think again: That approach will work most of the time (at least with <small>MS DOS</small> text files), but will fail occasionally.</p>
+<p>The problem is that not all non-Unix text files end their line with the carriage return / line feed sequence. Some use carriage returns without line feeds. Others combine several blank lines into a single carriage return followed by several line feeds. And so on.</p>
+<p>A text file converter, then, must be able to handle any possible line endings:</p>
+<ul>
+<li><p>carriage return / line feed</p></li>
+<li><p>carriage return</p></li>
+<li><p>line feed / carriage return</p></li>
+<li><p>line feed</p></li>
+</ul>
+<p>It should also handle files that use some kind of a combination of the above (e.g., carriage return followed by several line feeds).</p>
+<div class="sect1"><a name="finite-state-machine" />
+<h2>10.1.Finite State Machine</h2>
+<p>The problem is easily solved by the use of a technique called <i>finite state machine</i>, originally developed by the designers of digital electronic circuits. A <i>finite state machine</i> is a digital circuit whose output is dependent not only on its input but on its previous input, i.e., on its state. The microprocessor is an example of a <i>finite state machine</i>: Our assembly language code is assembled to machine language in which some assembly language code produces a single byte of machine language, while others produce several bytes. As the microprocessor fetches the bytes from the memory one by one, some of them simply change its state rather than produce some output. When all the bytes of the op code are fetched, the microprocessor produces some output, or changes the value of a register, etc.</p>
+<p>Because of that, all software is essentially a sequence of state instructions for the microprocessor. Nevertheless, the concept of <i>finite state machine</i> is useful in software design as well.</p>
+<p>Our text file converter can be designed as a <i>finite state machine</i> with three possible states. We could call them states <small>0</small>-<small>2</small>, but it will make our life easier if we give them symbolic names:</p>
+<ul><li><p><span class="symbol"><code>ordinary</code></span></p></li>
+<li><p><span class="symbol"><code>cr</code></span></p></li>
+<li><p><span class="symbol"><code>lf</code></span></p></li></ul>
+<p>Our program will start in the <span class="symbol"><code>ordinary</code></span> state. During this state, the program action depends on its input as follows:</p>
+<ul><li><p>If the input is anything other than a carriage return or line feed, the input is simply passed on to the output. The state remains unchanged.</p></li>
+<li><p>If the input is a carriage return, the state is changed to <span class="symbol"><code>cr</code></span>. The input is then discarded, i.e., no output is made.</p></li>
+<li><p>If the input is a line feed, the state is changed to <span class="symbol"><code>lf</code></span>. The input is then discarded.</p></li></ul>
+<p>Whenever we are in the <span class="symbol"><code>cr</code></span> state, it is because the last input was a carriage return, which was unprocessed. What our software does in this state again depends on the current input:</p>
+<ul><li><p>If the input is anything other than a carriage return or line feed, output a line feed, then output the input, then change the state to <span class="symbol"><code>ordinary</code></span>.</p></li>
+<li><p>If the input is a carriage return, we have received two (or more) carriage returns in a row. We discard the input, we output a line feed, and leave the state unchanged.</p></li>
+<li><p>If the input is a line feed, we output the line feed and change the state to <span class="symbol"><code>ordinary</code></span>. Note that this is not the same as the first case above – if we tried to combine them, we would be outputting two line feeds instead of one.</p></li></ul>
+<p>Finally, we are in the <span class="symbol"><code>lf</code></span> state after we have received a line feed that was not preceded by a carriage return. This will happen when our file already is in Unix format, or whenever several lines in a row are expressed by a single carriage return followed by several line feeds, or when line ends with a line feed / carriage return sequence. Here is how we need to handle our input in this state:</p>
+<ul><li><p>If the input is anything other than a carriage return or line feed, we output a line feed, then output the input, then change the state to <span class="symbol"><code>ordinary</code></span>. This is exactly the same action as in the <span class="symbol"><code>cr</code></span> state upon receiving the same kind of input.</p></li>
+<li><p>If the input is a carriage return, we discard the input, we output a line feed, then change the state to <span class="symbol"><code>ordinary</code></span>.</p></li>
+<li><p>If the input is a line feed, we output the line feed, and leave the state unchanged.</p></li></ul>
+<div class="sect2"><a name="final-state" />
+<h3>10.1.1. The Final State</h3>
+<p>The above <i>finite state machine</i> works for the entire file, but leaves the possibility that the final line end will be ignored. That will happen whenever the file ends with a single carriage return or a single line feed. I did not think of it when I wrote <span class="application"><tt><b>tuc</b></tt></span>, just to discover that occasionally it strips the last line ending.</p>
+<p>This problem is easily fixed by checking the state after the entire file was processed. If the state is not <span class="symbol"><code>ordinary</code></span>, we simply need to output one last line feed.</p>
+<blockquote>
+<b>N.B.:</b> Now that we have expressed our algorithm as a <i>finite state machine</i>, we could easily design a dedicated digital electronic circuit (a “chip”) to do the conversion for us. Of course, doing so would be considerably more expensive than writing an assembly language program.</blockquote>
+</div>
+<div class="sect2"><a name="tuc-counter" />
+<h3>10.1.2. The Output Counter</h3>
+<p>Because our file conversion program may be combining two characters into one, we need to use an output counter. We initialize it to <span class="constant"><code><b>0</b></code></span>, and increase it every time we send a character to the output. At the end of the program, the counter will tell us what size we need to set the file to.</p>
+</div>
+</div>
+<div class="sect1"><a name="software-fsm" />
+<h2>10.2. Implementing FSM in Software</h2>
+<p>The hardest part of working with a <i>finite state machine</i> is analyzing the problem and expressing it as a <i>finite state machine</i>. That accomplished, the software almost writes itself.</p>
+<p>In a high-level language, such as <small>C</small>, there are several main approaches. One is to use a <span class="statement"><code><b>switch</b></code></span> statement which chooses what function should be run. For example,</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	switch (state) {
+	default:
+	case REGULAR:
+		regular(inputchar);
+		break;
+	case CR:
+		cr(inputchar);
+		break;
+	case LF:
+		lf(inputchar);
+		break;
+	}
+</pre></blockquote></div></td></tr></table>
+<p>Another approach is by using an array of function pointers, something like this:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	(output[state])(inputchar);
+</pre></blockquote></div></td></tr></table>
+<p>Yet another is to have <span class="varname"><code><b>state</b></code></span> be a function pointer, set to point at the appropriate function:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	(*state)(inputchar);
+</pre></blockquote></div></td></tr></table>
+<p>This is the approach we will use in our program because it is very easy to do in assembly language, and very fast, too. We will simply keep the address of the right procedure in <span class="register"><code><b>EBX</b></code></span>, and then just issue:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	call	ebx
+</pre></blockquote></div></td></tr></table>
+<p>This is possibly faster than hardcoding the address in the code because the microprocessor does not have to fetch the address from the memory—it is already stored in one of its registers. I said <i>possibly</i> because with the caching modern microprocessors do, either way may be equally fast.</p>
+</div>
+<div class="sect1"><a id="memory-mapped-files" />
+<h2>10.3.Memory Mapped Files</h2>
+<p>Because our program works on a single file, we cannot use the approach that worked for us before, i.e., to read from an input file and to write to an output file.</p>
+<p>Unix allows us to map a file, or a section of a file, into memory. To do that, we first need to open the file with the appropriate read/write flags. Then we use the <span class="syscall"><code><b>mmap</b></code></span> system call to map it into the memory. One nice thing about <span class="syscall"><code><b>mmap</b></code></span> is that it automatically works with virtual memory: We can map more of the file into the memory than we have physical memory available, yet still access it through regular memory op codes, such as <span class="opcode"><code><b>mov</b></code></span>, <span class="opcode"><code><b>lods</b></code></span>, and <span class="opcode"><code><b>stos</b></code></span>. Whatever changes we make to the memory image of the file will be written to the file by the system. We do not even have to keep the file open: As long as it stays mapped, we can read from it and write to it.</p>
+<p>The <small>32</small>-bit Intel microprocessors can access up to four gigabytes of memory – physical or virtual. The FreeBSD system allows us to use up to a half of it for file mapping.</p>
+<p>For simplicity sake, in this tutorial we will only convert files that can be mapped into the memory in their entirety. There are probably not too many text files that exceed two gigabytes in size. If our program encounters one, it will simply display a message suggesting we use the original <span class="application"><tt><b>tuc</b></tt></span> instead.</p>
+<p>If you examine your copy of <span class="filename"><tt>syscalls.master</tt></span>, you will find two separate syscalls named <span class="syscall"><code><b>mmap</b></code></span>. This is because of evolution of Unix: There was the traditional <small>BSD</small> <span class="syscall"><code><b>mmap</b></code></span>, syscall <small>71</small>. That one was superceded by the <small>POSIX</small> <span class="syscall"><code><b>mmap</b></code></span>, syscall <small>197</small>. The FreeBSD system supports both because older programs were written by using the original <small>BSD</small> version. But new software uses the <small>POSIX</small> version, which is what we will use.</p>
+<p>The <span class="filename"><tt>syscalls.master</tt></span> file lists the <small>POSIX</small> version like this:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+197	STD	BSD	{ caddr_t mmap(caddr_t addr, size_t len, int prot, 			    int flags, int fd, long pad, off_t pos); }
+</pre></blockquote></div></td></tr></table>
+<p>This differs slightly from what <tt><b>mmap(2)</b></tt> says. That is because <tt><b>mmap(2)</b></tt> describes the <small>C</small> version.</p>
+<p>The difference is in the <span class="varname"><code><b>long pad</b></code></span> argument, which is not present in the <small>C</small> version. However, the FreeBSD syscalls add a <small>32</small>-bit pad after <span class="opcode"><code><b>push</b></code></span>ing a <small>64</small>-bit argument. In this case, <span class="varname"><code><b>off_t</b></code></span> is a <small>64</small>-bit value.</p>
+<p>When we are finished working with a memory-mapped file, we unmap it with the <span class="syscall"><code><b>munmap</b></code></span> syscall:</p>
+<blockquote>
+<b>T<small>IP</small>:</b> For an in-depth treatment of <span class="syscall"><code><b>mmap</b></code></span>, see W. Richard Stevens’ <a target="_top" href="http://www.int80h.org/cgi-bin/isbn?isbn=0130810819">Unix Network Programming, Volume 2, Chapter 12</a>.</blockquote>
+</div>
+<div class="sect1"><a name="file-size" />
+<h2>10.4. Determining File Size</h2>
+<p>Because we need to tell <span class="syscall"><code><b>mmap</b></code></span> how many bytes of the file to map into the memory, and because we want to map the entire file, we need to determine the size of the file.</p>
+<p>We can use the <span class="syscall"><code><b>fstat</b></code></span> syscall to get all the information about an open file that the system can give us. That includes the file size.</p>
+<p>Again, <span class="filename"><tt>syscalls.master</tt></span> lists two versions of <span class="syscall"><code><b>fstat</b></code></span>, a traditional one (syscall <small>62</small>), and a <small>POSIX</small> one (syscall <small>189</small>). Naturally, we will use the <small>POSIX</small> version:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+189	STD	POSIX	{ int fstat(int fd, struct stat *sb); }
+</pre></blockquote></div></td></tr></table>
+<p>This is a very straightforward call: We pass to it the address of a <span class="structname"><code>stat</code></span> structure and the descriptor of an open file. It will fill out the contents of the <span class="structname"><code>stat</code></span> structure.</p>
+<p>I do, however, have to say that I tried to declare the <span class="structname"><code>stat</code></span> structure in the <span class="varname"><code><b>.bss</b></code></span> section, and <span class="syscall"><code><b>fstat</b></code></span> did not like it: It set the carry flag indicating an error. After I changed the code to allocate the structure on the stack, everything was working fine.</p>
+</div>
+<div class="sect1"><a name="ftruncate" />
+<h2>10.5. Changing the File Size</h2>
+<p>Because our program may combine carriage return / line feed sequences into straight line feeds, our output may be smaller than our input. However, since we are placing our output into the same file we read the input from, we may have to change the size of the file.</p>
+<p>The <span class="syscall"><code><b>ftruncate</b></code></span> system call allows us to do just that. Despite its somewhat misleading name, the <span class="syscall"><code><b>ftruncate</b></code></span> system call can be used to both truncate the file (make it smaller) and to grow it.</p>
+<p>And yes, we will find two versions of <span class="syscall"><code><b>ftruncate</b></code></span> in <span class="filename"><tt>syscalls.master</tt></span>, an older one (<small>130</small>), and a newer one (<small>201</small>). We will use the newer one:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+201	STD	BSD	{ int ftruncate(int fd, int pad, off_t length); }
+</pre></blockquote></div></td></tr></table>
+<p>Please note that this one contains a <span class="varname"><code><b>int pad</b></code></span> again.</p>
+</div>
+<div class="sect1"><a name="ftuc" />
+<h2>10.6. <tt>ftuc</tt></h2>
+<p>We now know everything we need to write <span class="application"><tt><b>ftuc</b></tt></span>. We start by adding some new lines in <span class="filename"><tt>system.inc</tt></span>. First, we define some constants and structures, somewhere at or near the beginning of the file:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+;;;;;;; open flags
+%define	O_RDONLY	0
+%define	O_WRONLY	1
+%define	O_RDWR	2
+
+;;;;;;; mmap flags
+%define	PROT_NONE	0
+%define	PROT_READ	1
+%define	PROT_WRITE	2
+%define	PROT_EXEC	4
+;;
+%define	MAP_SHARED	0001h
+%define	MAP_PRIVATE	0002h
+
+;;;;;;; stat structure
+struc	stat
+st_dev		resd	1	; = 0
+st_ino		resd	1	; = 4
+st_mode		resw	1	; = 8, size is 16 bits
+st_nlink	resw	1	; = 10, ditto
+st_uid		resd	1	; = 12
+st_gid		resd	1	; = 16
+st_rdev		resd	1	; = 20
+st_atime	resd	1	; = 24
+st_atimensec	resd	1	; = 28
+st_mtime	resd	1	; = 32
+st_mtimensec	resd	1	; = 36
+st_ctime	resd	1	; = 40
+st_ctimensec	resd	1	; = 44
+st_size		resd	2	; = 48, size is 64 bits
+st_blocks	resd	2	; = 56, ditto
+st_blksize	resd	1	; = 64
+st_flags	resd	1	; = 68
+st_gen		resd	1	; = 72
+st_lspare	resd	1	; = 76
+st_qspare	resd	4	; = 80
+endstruc
+</pre></blockquote></div></td></tr></table>
+<p>We define the new syscalls:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%define	SYS_mmap	197
+%define	SYS_munmap	73
+%define	SYS_fstat	189
+%define	SYS_ftruncate	201
+</pre></blockquote></div></td></tr></table>
+<p>We add the macros for their use:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+%macro	sys.mmap	0
+	system	SYS_mmap
+%endmacro
+
+%macro	sys.munmap	0
+	system	SYS_munmap
+%endmacro
+
+%macro	sys.ftruncate	0
+	system	SYS_ftruncate
+%endmacro
+
+%macro	sys.fstat	0
+	system	SYS_fstat
+%endmacro
+</pre></blockquote></div></td></tr></table>
+<p>And here is our code:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+;;;;;;; Fast Text-to-Unix Conversion (ftuc.asm) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Started:	21-Dec-2000
+;; Updated:	22-Dec-2000
+;;
+;; Copyright 2000 G. Adam Stanislav.
+;; All rights reserved.
+;;
+;;;;;;; v.1 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+%include	'system.inc'
+
+section	.data
+	db	'Copyright 2000 G. Adam Stanislav.', 0Ah
+	db	'All rights reserved.', 0Ah
+usg	db	'Usage: ftuc filename', 0Ah
+usglen	equ	usg
+co	db	"ftuc: Can't open file.", 0Ah
+colen	equ	co
+fae	db	'ftuc: File access error.', 0Ah
+faelen	equ	fae
+ftl	db	'ftuc: File too long, use regular tuc instead.', 0Ah
+ftllen	equ	ftl
+mae	db	'ftuc: Memory allocation error.', 0Ah
+maelen	equ	mae
+
+section	.text
+
+align 4
+memerr:
+	push	dword maelen
+	push	dword mae
+	jmp	short error
+
+align 4
+toolong:
+	push	dword ftllen
+	push	dword ftl
+	jmp	short error
+
+align 4
+facerr:
+	push	dword faelen
+	push	dword fae
+	jmp	short error
+
+align 4
+cantopen:
+	push	dword colen
+	push	dword co
+	jmp	short error
+
+align 4
+usage:
+	push	dword usglen
+	push	dword usg
+
+error:
+	push	dword stderr
+	sys.write
+
+	push	dword 1
+	sys.exit
+
+align 4
+global	_start
+_start:
+	pop	eax		; argc
+	pop	eax		; program name
+	pop	ecx		; file to convert
+	jecxz	usage
+
+	pop	eax
+	or	eax, eax	; Too many arguments?
+	jne	usage
+
+	; Open the file
+	push	dword O_RDWR
+	push	ecx
+	sys.open
+	jc	cantopen
+
+	mov	ebp, eax	; Save fd
+
+	sub	esp, byte stat_size
+	mov	ebx, esp
+
+	; Find file size
+	push	ebx
+	push	ebp		; fd
+	sys.fstat
+	jc	facerr
+
+	mov	edx, [ebx + st_size + 4]
+
+	; File is too long if EDX != 0 ...
+	or	edx, edx
+	jne	near toolong
+	mov	ecx, [ebx + st_size]
+	; ... or if it is above 2 GB
+	or	ecx, ecx
+	js	near toolong
+
+	; Do nothing if the file is 0 bytes in size
+	jecxz	.quit
+
+	; Map the entire file in memory
+	push	edx
+	push	edx		; starting at offset 0
+	push	edx		; pad
+	push	ebp		; fd
+	push	dword MAP_SHARED
+	push	dword PROT_READ | PROT_WRITE
+	push	ecx		; entire file size
+	push	edx		; let system decide on the address
+	sys.mmap
+	jc	near memerr
+
+	mov	edi, eax
+	mov	esi, eax
+	push	ecx		; for SYS_munmap
+	push	edi
+
+	; Use EBX for state machine
+	mov	ebx, ordinary
+	mov	ah, 0Ah
+	cld
+
+.loop:
+	lodsb
+	call	ebx
+	loop	.loop
+
+	cmp	ebx, ordinary
+	je	.filesize
+
+	; Output final lf
+	mov	al, ah
+	stosb
+	inc	edx
+
+.filesize:
+	; truncate file to new size
+	push	dword 0		; high dword
+	push	edx		; low dword
+	push	eax		; pad
+	push	ebp
+	sys.ftruncate
+
+	; close it (ebp still pushed)
+	sys.close
+
+	add	esp, byte 16
+	sys.munmap
+
+.quit:
+	push	dword 0
+	sys.exit
+
+align 4
+ordinary:
+	cmp	al, 0Dh
+	je	.cr
+
+	cmp	al, ah
+	je	.lf
+
+	stosb
+	inc	edx
+	ret
+
+align 4
+.cr:
+	mov	ebx, cr
+	ret
+
+align 4
+.lf:
+	mov	ebx, lf
+	ret
+
+align 4
+cr:
+	cmp	al, 0Dh
+	je	.cr
+
+	cmp	al, ah
+	je	.lf
+
+	xchg	al, ah
+	stosb
+	inc	edx
+
+	xchg	al, ah
+	; fall through
+
+.lf:
+	stosb
+	inc	edx
+	mov	ebx, ordinary
+	ret
+
+align 4
+.cr:
+	mov	al, ah
+	stosb
+	inc	edx
+	ret
+
+align 4
+lf:
+	cmp	al, ah
+	je	.lf
+
+	cmp	al, 0Dh
+	je	.cr
+
+	xchg	al, ah
+	stosb
+	inc	edx
+
+	xchg	al, ah
+	stosb
+	inc	edx
+	mov	ebx, ordinary
+	ret
+
+align 4
+.cr:
+	mov	ebx, ordinary
+	mov	al, ah
+	; fall through
+
+.lf:
+	stosb
+	inc	edx
+	ret
+</pre></blockquote></div></td></tr></table>
+<blockquote>
+<b>W<small>ARNING</small>:</b> Do not use this program on files stored on a disk formated by <small>MS DOS</small> or Windows. There seems to be a subtle bug in the FreeBSD code when using <span class="syscall"><code><b>mmap</b></code></span> on these drives mounted under FreeBSD: If the file is over a certain size, <span class="syscall"><code><b>mmap</b></code></span> will just fill the memory with zeros, and then copy them to the file overwriting its contents.</blockquote>
+</div>
+</div>
+<div class="chapter"><a name="one-pointed-mind" />
+<h1>Chapter 11 – One-Pointed Mind</h1>
+<p>As a student of Zen, I like the idea of a one-pointed mind: Do one thing at a time, and do it well.</p>
+<p>This, indeed, is very much how Unix works as well. While a typical Windows application is attempting to do everything imaginable (and is, therefore, riddled with bugs), a typical Unix program does only one thing, and it does it well.</p>
+<p>The typical Unix user then essentially assembles his own applications by writing a shell script which combines the various existing programs by piping the output of one program to the input of another.</p>
+<p>When writing your own Unix software, it is generally a good idea to see what parts of the problem you need to solve can be handled by existing programs, and only write your own programs for that part of the problem that you do not have an existing solution for.</p>
+<div class="sect1"><a name="csv" /><h2>11.1. CSV</h2>
+<p>I will illustrate this principle with a specific real-life example I was faced with recently:</p>
+<p>I needed to extract the 11th field of each record from a database I downloaded from a web site. The database was a <small>CSV</small> file, i.e., a list of <i>comma-separated values</i>. That is quite a standard format for sharing data among people who may be using different database software.</p>
+<p>The first line of the file contains the list of various fields separated by commas. The rest of the file contains the data listed line by line, with values separated by commas.</p>
+<p>I tried <span class="application"><tt><b>awk</b></tt></span>, using the comma as a separator. But because several lines contained a quoted comma, <span class="application"><tt><b>awk</b></tt></span> was extracting the wrong field from those lines.</p>
+<p>Therefore, I needed to write my own software to extract the 11th field from the <small>CSV</small> file. However, going with the Unix spirit, I only needed to write a simple filter that would do the following:</p>
+<ul><li><p>Remove the first line from the file;</p></li>
+<li><p>Change all unquoted commas to a different character;</p></li>
+<li><p>Remove all quotation marks.</p></li></ul>
+<p>Strictly speaking, I could use <span class="application"><tt><b>sed</b></tt></span> to remove the first line from the file, but doing so in my own program was very easy, so I decided to do it and reduce the size of the pipeline.</p>
+<p>At any rate, writing a program like this took me about 20 minutes. Writing a program that extracts the 11th field from the <small>CSV</small> file would take a lot longer, and I could not reuse it to extract some other field from some other database.</p>
+<blockquote>
+<b>N.B.:</b> While it took me 20 minutes to write, it took me almost a day to debug. This was because of the <span class="varname"><code><b>.code</b></code></span> problem described in the <a target="_top" href="#change-log">change log</a>. I am just mentioning this so you do not wonder why the code itself says it was started on one day, updated the next.</blockquote>
+<p>This time I decided to let it do a little more work than a typical tutorial program would:</p>
+<ul><li><p>It parses its command line for options;</p></li>
+<li><p>It displays proper usage if it finds wrong arguments;</p></li>
+<li><p>It produces meaningful error messages.</p></li></ul>
+<p>Here is its usage message:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+Usage: csv [-t&lt;delim&gt;] [-c&lt;comma&gt;] [-p] [-o &lt;outfile&gt;] [-i &lt;infile&gt;]
+</pre></blockquote></div></td></tr></table>
+<p>All parameters are optional, and can appear in any order.</p>
+<p>The <span class="parameter"><code><b>-t</b></code></span> parameter declares what to replace the commas with. The <span class="constant"><code><b>tab</b></code></span> is the default here. For example, <span class="parameter"><code><b>-t;</b></code></span> will replace all unquoted commas with semicolons.</p>
+<p>I did not need the <span class="parameter"><code><b>-c</b></code></span> option, but it may come in handy in the future. It lets me declare that I want a character other than a comma replaced with something else. For example, <span class="parameter"><code><b>-c@</b></code></span> will replace all at signs (useful if you want to split a list of email addresses to their user names and domains).</p>
+<p>The <span class="parameter"><code><b>-p</b></code></span> option preserves the first line, i.e., it does not delete it. By default, we delete the first line because in a <small>CSV</small> file it contains the field names rather than data.</p>
+<p>The <span class="parameter"><code><b>-i</b></code></span> and <span class="parameter"><code><b>-o</b></code></span> options let me specify the input and the output files. Defaults are <span class="filename"><tt>stdin</tt></span> and <span class="filename"><tt>stdout</tt></span>, so this is a regular Unix filter.</p>
+<p>I made sure that both <span class="parameter"><code><b>-i filename</b></code></span> and <span class="parameter"><code><b>-ifilename</b></code></span> are accepted. I also made sure that only one input and one output files may be specified.</p>
+<p>To get the 11th field of each record, I can now do:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>csv '-t;' <span class="replaceable"><i>data.csv</i></span> | awk '-F;' '{print 1}'</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>The code stores the options (except for the file descriptors) in <span class="register"><code><b>EDX</b></code></span>: The comma in <span class="register"><code><b>DH</b></code></span>, the new separator in <span class="register"><code><b>DL</b></code></span>, and the flag for the <span class="parameter"><code><b>-p</b></code></span> option in the highest bit of <span class="register"><code><b>EDX</b></code></span>, so a check for its sign will give us a quick decision what to do.</p>
+<p>Here is the code:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+;;;;;;; csv.asm ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Convert a comma-separated file to a something-else separated file.
+;
+; Started:	31-May-2001
+; Updated:	 1-Jun-2001
+;
+; Copyright (c) 2001 G. Adam Stanislav
+; All rights reserved.
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+%include	'system.inc'
+
+%define	BUFSIZE	2048
+
+section	.data
+fd.in	dd	stdin
+fd.out	dd	stdout
+usg	db	'Usage: csv [-t&lt;delim&gt;] [-c&lt;comma&gt;] [-p] [-o &lt;outfile&gt;] [-i &lt;infile&gt;]', 0Ah
+usglen	equ	usg
+iemsg	db	"csv: Can't open input file", 0Ah
+iemlen	equ	iemsg
+oemsg	db	"csv: Can't create output file", 0Ah
+oemlen	equ	oemsg
+
+section .bss
+ibuffer	resb	BUFSIZE
+obuffer	resb	BUFSIZE
+
+section	.text
+align 4
+ierr:
+	push	dword iemlen
+	push	dword iemsg
+	push	dword stderr
+	sys.write
+	push	dword 1		; return failure
+	sys.exit
+
+align 4
+oerr:
+	push	dword oemlen
+	push	dword oemsg
+	push	dword stderr
+	sys.write
+	push	dword 2
+	sys.exit
+
+align 4
+usage:
+	push	dword usglen
+	push	dword usg
+	push	dword stderr
+	sys.write
+	push	dword 3
+	sys.exit
+
+align 4
+global	_start
+_start:
+	add	esp, byte 8	; discard argc and argv[0]
+	mov	edx, (',' &lt;&lt; 8) | 9
+
+.arg:
+	pop	ecx
+	or	ecx, ecx
+	je	near .init		; no more arguments
+
+	; ECX contains the pointer to an argument
+	cmp	byte [ecx], '-'
+	jne	usage
+
+	inc	ecx
+	mov	ax, [ecx]
+
+.o:
+	cmp	al, 'o'
+	jne	.i
+
+	; Make sure we are not asked for the output file twice
+	cmp	dword [fd.out], stdout
+	jne	usage
+
+	; Find the path to output file - it is either at [ECX+1],
+	; i.e., -ofile --
+	; or in the next argument,
+	; i.e., -o file
+
+	inc	ecx
+	or	ah, ah
+	jne	.openoutput
+	pop	ecx
+	jecxz	usage
+
+.openoutput:
+	push	dword 420	; file mode (644 octal)
+	push	dword 0200h | 0400h | 01h
+	; O_CREAT | O_TRUNC | O_WRONLY
+	push	ecx
+	sys.open
+	jc	near oerr
+
+	add	esp, byte 12
+	mov	[fd.out], eax
+	jmp	short .arg
+
+.i:
+	cmp	al, 'i'
+	jne	.p
+
+	; Make sure we are not asked twice
+	cmp	dword [fd.in], stdin
+	jne	near usage
+
+	; Find the path to the input file
+	inc	ecx
+	or	ah, ah
+	jne	.openinput
+	pop	ecx
+	or	ecx, ecx
+	je near usage
+
+.openinput:
+	push	dword 0		; O_RDONLY
+	push	ecx
+	sys.open
+	jc	near ierr		; open failed
+
+	add	esp, byte 8
+	mov	[fd.in], eax
+	jmp	.arg
+
+.p:
+	cmp	al, 'p'
+	jne	.t
+	or	ah, ah
+	jne	near usage
+	or	edx, 1 &lt;&lt; 31
+	jmp	.arg
+
+.t:
+	cmp	al, 't'		; redefine output delimiter
+	jne	.c
+	or	ah, ah
+	je	near usage
+	mov	dl, ah
+	jmp	.arg
+
+.c:
+	cmp	al, 'c'
+	jne	near usage
+	or	ah, ah
+	je	near usage
+	mov	dh, ah
+	jmp	.arg
+
+align 4
+.init:
+	sub	eax, eax
+	sub	ebx, ebx
+	sub	ecx, ecx
+	mov	edi, obuffer
+
+	; See if we are to preserve the first line
+	or	edx, edx
+	js	.loop
+
+.firstline:
+	; get rid of the first line
+	call	getchar
+	cmp	al, 0Ah
+	jne	.firstline
+
+.loop:
+	; read a byte from stdin
+	call	getchar
+
+	; is it a comma (or whatever the user asked for)?
+	cmp	al, dh
+	jne	.quote
+
+	; Replace the comma with a tab (or whatever the user wants)
+	mov	al, dl
+
+.put:
+	call	putchar
+	jmp	short .loop
+
+.quote:
+	cmp	al, '"'
+	jne	.put
+
+	; Print everything until you get another quote or EOL. If it
+	; is a quote, skip it. If it is EOL, print it.
+.qloop:
+	call	getchar
+	cmp	al, '"'
+	je	.loop
+
+	cmp	al, 0Ah
+	je	.put
+
+	call	putchar
+	jmp	short .qloop
+
+align 4
+getchar:
+	or	ebx, ebx
+	jne	.fetch
+
+	call	read
+
+.fetch:
+	lodsb
+	dec	ebx
+	ret
+
+read:
+	jecxz	.read
+	call	write
+
+.read:
+	push	dword BUFSIZE
+	mov	esi, ibuffer
+	push	esi
+	push	dword [fd.in]
+	sys.read
+	add	esp, byte 12
+	mov	ebx, eax
+	or	eax, eax
+	je	.done
+	sub	eax, eax
+	ret
+
+align 4
+.done:
+	call	write		; flush output buffer
+
+	; close files
+	push	dword [fd.in]
+	sys.close
+
+	push	dword [fd.out]
+	sys.close
+
+	; return success
+	push	dword 0
+	sys.exit
+
+align 4
+putchar:
+	stosb
+	inc	ecx
+	cmp	ecx, BUFSIZE
+	je	write
+	ret
+
+align 4
+write:
+	jecxz	.ret	; nothing to write
+	sub	edi, ecx	; start of buffer
+	push	ecx
+	push	edi
+	push	dword [fd.out]
+	sys.write
+	add	esp, byte 12
+	sub	eax, eax
+	sub	ecx, ecx	; buffer is empty now
+.ret:
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>Much of it is taken from <span class="filename"><tt>hex.asm</tt></span> above. But there is one important difference: I no longer call <span class="function"><code><b>write</b></code></span> whenever I am outputing a line feed. Yet, the code can be used interactively.</p>
+<p>I have found a better solution for the interactive problem since I first started writing this tutorial. I wanted to make sure each line is printed out separately only when needed. After all, there is no need to flush out every line when used non-interactively.</p>
+<p>The new solution I use now is to call <span class="function"><code><b>write</b></code></span> every time I find the input buffer empty. That way, when running in the interactive mode, the program reads one line from the user’s keyboard, processes it, and sees its input buffer is empty. It flushes its output and reads the next line.</p>
+<div class="sect2"><a name="buffered-dark-side" />
+<h3>11.1.1. The Dark Side of Buffering</h3>
+<p>This change prevents a mysterious lockup in a very specific case. I refer to it as the <i>dark side of buffering</i>, mostly because it presents a danger that is not quite obvious.</p>
+<p>It is unlikely to happen with a program like the <span class="application"><tt><b>csv</b></tt></span> above, so let us consider yet another filter: In this case we expect our input to be raw data representing color values, such as the <i>red</i>, <i>green</i>, and <i>blue</i> intensities of a pixel. Our output will be the negative of our input.</p>
+<p>Such a filter would be very simple to write. Most of it would look just like all the other filters we have written so far, so I am only going to show you its inner loop:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+.loop:
+	call	getchar
+	not	al		; Create a negative
+	call	putchar
+	jmp	short .loop
+</pre></blockquote></div></td></tr></table>
+<p>Because this filter works with raw data, it is unlikely to be used interactively.</p>
+<p>But it could be called by image manipulation software. And, unless it calls <span class="function"><code><b>write</b></code></span> before each call to <span class="function"><code><b>read</b></code></span>, chances are it will lock up.</p>
+<p>Here is what might happen:</p>
+<div class="procedure"><ol type="1"><li><p>The image editor will load our filter using the <small>C</small> function <span class="function"><code><b>popen()</b></code></span>.</p></li>
+<li><p>It will read the first row of pixels from a bitmap or pixmap.</p></li>
+<li><p>It will write the first row of pixels to the <i>pipe</i> leading to the <span class="varname"><code><b>fd.in</b></code></span> of our filter.</p></li>
+<li><p>Our filter will read each pixel from its input, turn it to a negative, and write it to its output buffer.</p></li>
+<li><p>Our filter will call <span class="function"><code><b>getchar</b></code></span> to fetch the next pixel.</p></li>
+<li><p><span class="function"><code><b>getchar</b></code></span> will find an empty input buffer, so it will call <span class="function"><code><b>read</b></code></span>.</p></li>
+<li><p><span class="function"><code><b>read</b></code></span> will call the <span class="syscall"><code><b>SYS_read</b></code></span> system call.</p></li>
+<li><p>The <i>kernel</i> will suspend our filter until the image editor sends more data to the pipe.</p></li>
+<li><p>The image editor will read from the other pipe, connected to the <span class="varname"><code><b>fd.out</b></code></span> of our filter so it can set the first row of the output image <i>before</i> it sends us the second row of the input.</p></li>
+<li><p>The <i>kernel</i> suspends the image editor until it receives some output from our filter, so it can pass it on to the image editor.</p></li>
+</ol></div>
+<p>At this point our filter waits for the image editor to send it more data to process, while the image editor is waiting for our filter to send it the result of the processing of the first row. But the result sits in our output buffer.</p>
+<p>The filter and the image editor will continue waiting for each other forever (or, at least, until they are killed). Our software has just entered a race condition.</p>
+<p>This problem does not exist if our filter flushes its output buffer <i>before</i> asking the <i>kernel</i> for more input data.</p>
+</div>
+</div>
+</div>
+<div class="chapter"><a name="fpu" />
+<h1>Chapter 12 – Using the FPU</h1>
+<p>Strangely enough, most of assembly language literature does not even mention the existence of the <small>FPU</small>, or <i>floating point unit</i>, let alone discuss programming it.</p>
+<p>Yet, never does assembly language shine more than when we create highly optimized <small>FPU</small> code by doing things that can be done <i>only</i> in assembly language.</p>
+<div class="sect1"><a name="fpu-organization" /><h2>12.1. Organization of the FPU</h2>
+<p>The <small>FPU</small> consists of <small>8</small> <small>80</small>–bit floating–point registers. These are organized in a stack fashion—you can <span class="function"><code><b>push</b></code></span> a value on <small>TOS</small> (<i>top of stack</i>) and you can <span class="function"><code><b>pop</b></code></span> it.</p>
+<p>That said, the assembly language op codes are not <span class="opcode"><code><b>push</b></code></span> and <span class="opcode"><code><b>pop</b></code></span> because those are already taken.</p>
+<p>You can <span class="function"><code><b>push</b></code></span> a value on <small>TOS</small> by using <span class="opcode"><code><b>fld</b></code></span>, <span class="opcode"><code><b>fild</b></code></span>, and <span class="opcode"><code><b>fbld</b></code></span>. Several other op codes let you <span class="function"><code><b>push</b></code></span> many common <i>constants</i>—such as <i>pi</i>—on the <small>TOS</small>.</p>
+<p>Similarly, you can <span class="function"><code><b>pop</b></code></span> a value by using <span class="opcode"><code><b>fst</b></code></span>, <span class="opcode"><code><b>fstp</b></code></span>, <span class="opcode"><code><b>fist</b></code></span>, <span class="opcode"><code><b>fistp</b></code></span>, and <span class="opcode"><code><b>fbstp</b></code></span>. Actually, only the op codes that end with a <i>p</i> will literally <span class="function"><code><b>pop</b></code></span> the value, the rest will <span class="function"><code><b>store</b></code></span> it somewhere else without removing it from the <small>TOS</small>.</p>
+<p>We can transfer the data between the <small>TOS</small> and the computer memory either as a <small>32</small>–bit, <small>64</small>–bit, or <small>80</small>–bit <i>real</i>, a <small>16</small>–bit, <small>32</small>–bit, or <small>64</small>–bit <i>integer</i>, or an <small>80</small>–bit <i>packed decimal</i>.</p>
+<p>The <small>80</small>–bit <i>packed decimal</i> is a special case of <i>binary coded decimal</i> which is very convenient when converting between the <small>ASCII</small> representation of data and the internal data of the <small>FPU</small>. It allows us to use <small>18</small> significant digits.</p>
+<p>No matter how we represent data in the memory, the <small>FPU</small> always stores it in the <small>80</small>–bit <i>real</i> format in its registers.</p>
+<p>Its internal precision is at least <small>19</small> decimal digits, so even if we choose to display results as <small>ASCII</small> in the full <small>18</small>–digit precision, we are still showing correct results.</p>
+<p>We can perform mathematical operations on the <small>TOS</small>: We can calculate its <i>sine</i>, we can <i>scale</i> it (i.e., we can multiply or divide it by a power of <small>2</small>), we can calculate its base–<small>2</small> <i>logarithm</i>, and many other things.</p>
+<p>We can also <i>multiply</i> or <i>divide</i> it by, <i>add</i> it to, or <i>subtract</i> it from, any of the <small>FPU</small> registers (including itself).</p>
+<p>The official Intel op code for the <small>TOS</small> is <span class="register"><code><b>st</b></code></span>, and for the <i>registers</i> <span class="register"><code><b>st(0)</b></code></span>–<span class="register"><code><b>st(7)</b></code></span>. <span class="register"><code><b>st</b></code></span> and <span class="register"><code><b>st(0)</b></code></span>, then, refer to the same register.</p>
+<p>For whatever reasons, the original author of <span class="application"><tt><b>nasm</b></tt></span> has decided to use different op codes, namely <span class="register"><code><b>st0</b></code></span>–<span class="register"><code><b>st7</b></code></span>. In other words, there are no parentheses, and the <small>TOS</small> is always <span class="register"><code><b>st0</b></code></span>, never just <span class="opcode"><code><b>st</b></code></span>.
+</p>
+<div class="sect2"><a name="fpu-packed-decimal" />
+<h3>12.1.1. The Packed Decimal Format</h3>
+<p>The <i>packed decimal</i> format uses <small>10</small> bytes (<small>80</small> bits) of memory to represent <small>18</small> digits. The number represented there is always an <i>integer</i>.</p>
+<blockquote>
+<b>T<small>IP</small>:</b> You can use it to get decimal places by multiplying the <small>TOS</small> by a power of <small>10</small> first.</blockquote>
+<p>The highest bit of the highest byte (byte <small>9</small>) is the <i>sign bit</i>: If it is set, the number is <i>negative</i>, otherwise, it is <i>positive</i>. The rest of the bits of this byte are unused/ignored.</p>
+<p>The remaining <small>9</small> bytes store the <small>18</small> digits of the number: <small>2</small> digits per byte.</p>
+<p>The <i>more significant digit</i> is stored in the high <i>nibble</i> (<small>4</small> bits), the <i>less significant digit</i> in the low <i>nibble</i>.</p>
+<p>That said, you might think that <span class="constant"><code><b>-1234567</b></code></span> would be stored in the memory like this (using hexadecimal notation):</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+80 00 00 00 00 00 01 23 45 67
+</pre></blockquote></div></td></tr></table>
+<p>Alas it is not! As with everything else of Intel make, even the <i>packed decimal</i> is <i>little–endian</i>.</p>
+<p>That means our <span class="constant"><code><b>-1234567</b></code></span> is stored like this:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+67 45 23 01 00 00 00 00 00 80
+</pre></blockquote></div></td></tr></table>
+<p>Remember that, or you will be pulling your hair out in desperation!</p>
+<blockquote>
+<b>N.B.:</b> The book to read—if you can find it—is Richard Startz’ <a target="_top" href="http://www.int80h.org/cgi-bin/isbn?isbn=013246604X">8<small>087</small>/8<small>0287</small>/8<small>0387</small> for the I<small>BM</small> P<small>C</small> <small>&amp;</small> Compatibles</a>. Though it does seem to take the fact about the little–endian storage of the <i>packed decimal</i> for granted. I kid you not about the desperation of trying to figure out what was wrong with the filter I show below <i>before</i> it occurred to me I should try the little–endian order even for this type of data.</blockquote>
+</div>
+</div>
+<div class="sect1"><a name="pinhole-photography" />
+<h2>12.2. Excursion to Pinhole Photography</h2>
+<p>To write meaningful software, we must not only understand our programming tools, but also the field we are creating software for.</p>
+<p>Our next filter will help us whenever we want to build a <i>pinhole camera</i>, so, we need some background in <i>pinhole photography</i> before we can continue.</p>
+<div class="sect2"><a name="camera" />
+<h3>12.2.1. The Camera</h3>
+<p>The easiest way to describe any camera ever built is as some empty space enclosed in some lightproof material, with a small hole in the enclosure.</p>
+<p>The enclosure is usually sturdy (e.g., a box), though sometimes it is flexible (the bellows). It is quite dark inside the camera. However, the hole lets light rays in through a single point (though in some cases there may be several). These light rays form an image, a representation of whatever is outside the camera, in front of the hole.</p>
+<p>If some light sensitive material (such as film) is placed inside the camera, it can capture the image.</p>
+<p>The hole often contains a <i>lens</i>, or a lens assembly, often called the <i>objective</i>.</p>
+</div>
+<div class="sect2"><a name="the-pinhole" />
+<h3>12.2.2. The Pinhole</h3>
+<p>But, strictly speaking, the lens is not necessary: The original cameras did not use a lens but a <i>pinhole</i>. Even today, <i>pinholes</i> are used, both as a tool to study how cameras work, and to achieve a special kind of image.</p>
+<p>The image produced by the <i>pinhole</i> is all equally sharp. Or <i>blurred</i>. There is an ideal size for a pinhole: If it is either larger or smaller, the image loses its sharpness.</p>
+</div>
+<div class="sect2"><a name="focal-length" />
+<h3>12.2.3. Focal Length</h3>
+<p>This ideal pinhole diameter is a function of the square root of <i>focal length</i>, which is the distance of the pinhole from the film.</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	D = PC * sqrt(FL)
+</pre></blockquote></div></td></tr></table>
+<p>In here, <span class="varname"><code><b>D</b></code></span> is the ideal diameter of the pinhole, <span class="varname"><code><b>FL</b></code></span> is the focal length, and <span class="constant"><code><b>PC</b></code></span> is a pinhole constant. According to Jay Bender, its value is <span class="constant"><code><b>0.04</b></code></span>, while Kenneth Connors has determined it to be <span class="constant"><code><b>0.037</b></code></span>. Others have proposed other values. Plus, this value is for the daylight only: Other types of light will require a different constant, whose value can only be determined by experimentation.</p>
+</div>
+<div class="sect2"><a name="f-number" />
+<h3>12.2.4. The F–Number</h3>
+<p>The f–number is a very useful measure of how much light reaches the film. A light meter can determine that, for example, to expose a film of specific sensitivity with f<small>5</small>.<small>6</small> may require the exposure to last <small>1</small>/<small>1000</small> sec.</p>
+<p>It does not matter whether it is a <small>35</small>–mm camera, or a <small>6</small>x<small>9</small>cm camera, etc. As long as we know the f–number, we can determine the proper exposure.</p>
+<p>The f–number is easy to calculate:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	F = FL / D
+</pre></blockquote></div></td></tr></table>
+<p>In other words, the f–number equals the focal length divided by the diameter of the pinhole. It also means a higher f–number either implies a smaller pinhole or a larger focal distance, or both. That, in turn, implies, the higher the f–number, the longer the exposure has to be.</p>
+<p>Furthermore, while pinhole diameter and focal distance are one–dimensional measurements, both, the film and the pinhole, are two–dimensional. That means that if you have measured the exposure at f–number <span class="varname"><code><b>A</b></code></span> as <span class="varname"><code><b>t</b></code></span>, then the exposure at f–number <span class="varname"><code><b>B</b></code></span> is:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	t * (B / A)²
+</pre></blockquote></div></td></tr></table>
+</div>
+<div class="sect2"><a name="normalized-f-number" />
+<h3>12.2.5. Normalized F–Number</h3>
+<p>While many modern cameras can change the diameter of their pinhole, and thus their f–number, quite smoothly and gradually, such was not always the case.</p>
+<p>To allow for different f–numbers, cameras typically contained a metal plate with several holes of different sizes drilled to them.</p>
+<p>Their sizes were chosen according to the above formula in such a way that the resultant f–number was one of standard f–numbers used on all cameras everywhere. For example, a very old Kodak Duaflex IV camera in my possession has three such holes for f–numbers <small>8</small>, <small>11</small>, and <small>16</small>.</p>
+<p>A more recently made camera may offer f–numbers of <small>2</small>.<small>8</small>, <small>4</small>, <small>5</small>.<small>6</small>, <small>8</small>, <small>11</small>, <small>16</small>, <small>22</small>, and <small>32</small> (as well as others). These numbers were not chosen arbitrarily: They all are powers of the square root of <small>2</small>, though they may be rounded somewhat.</p>
+</div>
+<div class="sect2"><a name="f-stop" />
+<h3>12.2.6. The F–Stop</h3>
+<p>A typical camera is designed in such a way that setting any of the normalized f–numbers changes the feel of the dial. It will naturally <i>stop</i> in that position. Because of that, these positions of the dial are called f–stops.</p>
+<p>Since the f–numbers at each stop are powers of the square root of <small>2</small>, moving the dial by <small>1</small> stop will double the amount of light required for proper exposure. Moving it by <small>2</small> stops will quadruple the required exposure. Moving the dial by <small>3</small> stops will require the increase in exposure <small>8</small> times, etc.</p>
+</div>
+</div>
+<div class="sect1"><a name="pinhole-software" />
+<h2>12.3. Designing the Pinhole Software</h2>
+<p>We are now ready to decide what exactly we want our pinhole software to do.</p>
+<div class="sect2"><a name="xpinhole-processing-input" />
+<h3>12.3.1. Processing Program Input</h3>
+<p>Since its main purpose is to help us design a working pinhole camera, we will use the <i>focal length</i> as the input to the program. This is something we can determine without software: Proper focal length is determined by the size of the film and by the need to shoot “regular” pictures, wide angle pictures, or telephoto pictures.</p>
+<p>Most of the programs we have written so far worked with individual characters, or bytes, as their input: The <span class="application"><tt><b>hex</b></tt></span> program converted individual bytes into a hexadecimal number, the <span class="application"><tt><b>csv</b></tt></span> program either let a character through, or deleted it, or changed it to a different character, etc.</p>
+<p>One program, <span class="application"><tt><b>ftuc</b></tt></span> used the state machine to consider at most two input bytes at a time.</p>
+<p>But our <span class="application"><tt><b>pinhole</b></tt></span> program cannot just work with individual characters, it has to deal with larger syntactic units.</p>
+<p>For example, if we want the program to calculate the pinhole diameter (and other values we will discuss later) at the focal lengths of <span class="constant"><code><b>100 mm</b></code></span>, <span class="constant"><code><b>150 mm</b></code></span>, and <span class="constant"><code><b>210 mm</b></code></span>, we may want to enter something like this:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="userinput"><kbd><b>100, 150, 210</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>Our program needs to consider more than a single byte of input at a time. When it sees the first <span class="constant"><code><b>1</b></code></span>, it must understand it is seeing the first digit of a decimal number. When it sees the <span class="constant"><code><b>0</b></code></span> and the other <span class="constant"><code><b>0</b></code></span>, it must know it is seeing more digits of the same number.</p>
+<p>When it encounters the first comma, it must know it is no longer receiving the digits of the first number. It must be able to convert the digits of the first number into the value of <span class="constant"><code><b>100</b></code></span>. And the digits of the second number into the value of <span class="constant"><code><b>150</b></code></span>. And, of course, the digits of the third number into the numeric value of <span class="constant"><code><b>210</b></code></span>.</p>
+<p>We need to decide what delimiters to accept: Do the input numbers have to be separated by a comma? If so, how do we treat two numbers separated by something else?</p>
+<p>Personally, I like to keep it simple. Something either is a number, so I process it. Or it is not a number, so I discard it. I don’t like the computer complaining about me typing in an extra character when it is <i>obvious</i> that it is an extra character. Duh!</p>
+<p>Plus, it allows me to break up the monotony of computing and type in a query instead of just a number:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre><span class="userinput"><kbd><b>What is the best pinhole diameter for the focal length of 150?</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>There is no reason for the computer to spit out a number of complaints:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+Syntax error: What
+Syntax error: is
+Syntax error: the
+Syntax error: best
+</pre></blockquote></div></td></tr></table>
+<p>Et cetera, et cetera, et cetera.</p>
+<p>Secondly, I like the <span class="constant"><code><b>#</b></code></span> character to denote the start of a comment which extends to the end of the line. This does not take too much effort to code, and lets me treat input files for my software as executable scripts.</p>
+<p>In our case, we also need to decide what units the input should come in: We choose <i>millimeters</i> because that is how most photographers measure the focus length.</p>
+<p>Finally, we need to decide whether to allow the use of the decimal point (in which case we must also consider the fact that much of the world uses a decimal <i>comma</i>).</p>
+<p>In our case allowing for the decimal point/comma would offer a false sense of precision: There is little if any noticeable difference between the focus lengths of <span class="constant"><code><b>50</b></code></span> and <span class="constant"><code><b>51</b></code></span>, so allowing the user to input something like <span class="constant"><code><b>50.5</b></code></span> is not a good idea. This is my opinion, mind you, but I am the one writing this program. You can make other choices in yours, of course.</p>
+</div>
+<div class="sect2"><a name="pinhole-options" />
+<h3>12.3.2. Offering Options</h3>
+<p>The most important thing we need to know when building a pinhole camera is the diameter of the pinhole. Since we want to shoot sharp images, we will use the above formula to calculate the pinhole diameter from focal length. As experts are offering several different values for the <span class="constant"><code><b>PC</b></code></span> constant, we will need to have the choice.</p>
+<p>It is traditional in Unix programming to have two main ways of choosing program parameters, plus to have a default for the time the user does not make a choice.</p>
+<p>Why have two ways of choosing?</p>
+<p>One is to allow a (relatively) <i>permanent</i> choice that applies automatically each time the software is run without us having to tell it over and over what we want it to do.</p>
+<p>The permanent choices may be stored in a configuration file, typically found in the user’s home directory. The file usually has the same name as the application but is started with a dot. Often <i>“rc”</i> is added to the file name. So, ours could be <span class="filename"><tt>~/.pinhole</tt></span> or <span class="filename"><tt>~/.pinholerc</tt></span>. (The <span class="filename"><tt>~/</tt></span> means current user’s home directory.)</p>
+<p>The configuration file is used mostly by programs that have many configurable parameters. Those that have only one (or a few) often use a different method: They expect to find the parameter in an <i>environment variable</i>. In our case, we might look at an environment variable named <span class="varname"><code><b>PINHOLE</b></code></span>.</p>
+<p>Usually, a program uses one or the other of the above methods. Otherwise, if a configuration file said one thing, but an environment variable another, the program might get confused (or just too complicated).</p>
+<p>Because we only need to choose <i>one</i> such parameter, we will go with the second method and search the environment for a variable named <span class="varname"><code><b>PINHOLE</b></code></span>.</p>
+<p>The other way allows us to make <i>ad hoc</i> decisions: <i>“Though I usually want you to use 0.039, this time I want 0.03872.”</i> In other words, it allows us to <i>override</i> the permanent choice.</p>
+<p>This type of choice is usually done with command line parameters.</p>
+<p>Finally, a program <i>always</i> needs a <i>default</i>. The user may not make any choices. Perhaps he does not know what to choose. Perhaps he is “just browsing.” Preferably, the default will be the value most users would choose anyway. That way they do not need to choose. Or, rather, they can choose the default without an additional effort.</p>
+<p>Given this system, the program may find conflicting options, and handle them this way:</p>
+<div class="procedure"><ol type="1"><li><p>If it finds an <i>ad hoc</i> choice (e.g., command line parameter), it should accept that choice. It must ignore any permanent choice and any default.</p></li>
+<li><p><i>Otherwise</i>, if it finds a permanent option (e.g., an environment variable), it should accept it, and ignore the default.</p></li>
+<li><p><i>Otherwise</i>, it should use the default.</p></li>
+</ol></div>
+<p>We also need to decide what <i>format</i> our <span class="constant"><code><b>PC</b></code></span> option should have.</p>
+<p>At first site, it seems obvious to use the <span class="varname"><code><b>PINHOLE=0.04</b></code></span> format for the environment variable, and <span class="parameter"><code><b>-p0.04</b></code></span> for the command line.</p>
+<p>Allowing that is actually a security risk. The <span class="constant"><code><b>PC</b></code></span> constant is a very small number. Naturally, we will test our software using various small values of <span class="constant"><code><b>PC</b></code></span>. But what will happen if someone runs the program choosing a huge value?</p>
+<p>It may crash the program because we have not designed it to handle huge numbers.</p>
+<p>Or, we may spend more time on the program so it can handle huge numbers. We might do that if we were writing commercial software for computer illiterate audience.</p>
+<p>Or, we might say, <i>“Tough! The user should know better."”</i></p>
+<p>Or, we just may make it impossible for the user to enter a huge number. This is the approach we will take: We will use an <i>implied 0.</i> prefix.</p>
+<p>In other words, if the user wants <span class="constant"><code><b>0.04</b></code></span>, we will expect him to type <span class="parameter"><code><b>-p04</b></code></span>, or set <span class="varname"><code><b>PINHOLE=04</b></code></span> in his environment. So, if he says <span class="parameter"><code><b>-p9999999</b></code></span>, we will interpret it as <span class="constant"><code><b>0.9999999</b></code></span>—still ridiculous but at least safer.</p>
+<p>Secondly, many users will just want to go with either Bender’s constant or Connors’ constant. To make it easier on them, we will interpret <span class="parameter"><code><b>-b</b></code></span> as identical to <span class="parameter"><code><b>-p04</b></code></span>, and <span class="parameter"><code><b>-c</b></code></span> as identical to <span class="parameter"><code><b>-p037</b></code></span>.</p>
+</div>
+<div class="sect2"><a name="pinhole-output" />
+<h3>12.3.3. The Output</h3>
+<p>We need to decide what we want our software to send to the output, and in what format.</p>
+<p>Since our input allows for an unspecified number of focal length entries, it makes sense to use a traditional database–style output of showing the result of the calculation for each focal length on a separate line, while separating all values on one line by a <span class="constant"><code><b>tab</b></code></span> character.</p>
+<p>Optionally, we should also allow the user to specify the use of the <small>CSV</small> format we have studied earlier. In this case, we will print out a line of comma–separated names describing each field of every line, then show our results as before, but substituting a <span class="constant"><code><b>comma</b></code></span> for the <span class="constant"><code><b>tab</b></code></span>.</p>
+<p>We need a command line option for the <small>CSV</small> format. We cannot use <span class="parameter"><code><b>-c</b></code></span> because that already means <i>use Connors’ constant</i>. For some strange reason, many web sites refer to <small>CSV</small> files as <i>“Excel spreadsheet”</i> (though the <small>CSV</small> format predates Excel). We will, therefore, use the <span class="parameter"><code><b>-e</b></code></span> switch to inform our software we want the output in the <small>CSV</small> format.</p>
+<p>We will start each line of the output with the focal length. This may sound repetitious at first, especially in the interactive mode: The user types in the focal length, and we are repeating it.</p>
+<p>But the user can type several focal lengths on one line. The input can also come in from a file or from the output of another program. In that case the user does not see the input at all.</p>
+<p>By the same token, the output can go to a file which we will want to examine later, or it could go to the printer, or become the input of another program.</p>
+<p>So, it makes perfect sense to start each line with the focal length as entered by the user.</p>
+<p>No, wait! Not as entered by the user. What if the user types in something like this:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="userinput"><kbd><b>00000000150</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>Clearly, we need to strip those leading zeros.</p>
+<p>So, we might consider reading the user input as is, converting it to binary inside the <small>FPU</small>, and printing it out from there.</p>
+<p>But...</p>
+<p>What if the user types something like this:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="userinput"><kbd><b>17459765723452353453534535353530530534563507309676764423</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>Ha! The packed decimal <small>FPU</small> format lets us input <small>18</small>–digit numbers. But the user has entered more than <small>18</small> digits. How do we handle that?</p>
+<p>Well, we <i>could</i> modify our code to read the first <small>18</small> digits, enter it to the <small>FPU</small>, then read more, multiply what we already have on the <small>TOS</small> by <small>10</small> raised to the number of additional digits, then <span class="function"><code><b>add</b></code></span> to it.</p>
+<p>Yes, we could do that. But in <i>this</i> program it would be ridiculous (in a different one it may be just the thing to do): Even the circumference of the Earth expressed in millimeters only takes <small>11</small> digits. Clearly, we cannot build a camera that large (not yet, anyway).</p>
+<p>So, if the user enters such a huge number, he is either bored, or testing us, or trying to break into the system, or playing games—doing anything but designing a pinhole camera.</p>
+<p>What will we do?</p>
+<p>We will slap him in the face, in a manner of speaking:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+17459765723452353453534535353530530534563507309676764423	???	???	???	???	???
+</pre></blockquote></div></td></tr></table>
+<p>To achieve that, we will simply ignore any leading zeros. Once we find a non–zero digit, we will initialize a counter to <span class="constant"><code><b>0</b></code></span> and start taking three steps:</p>
+<div class="procedure"><ol type="1">
+<li><p>Send the digit to the output.</p></li>
+<li><p>Append the digit to a buffer we will use later to produce the packed decimal we can send to the <small>FPU</small>.</p></li>
+<li><p>Increase the counter.</p></li>
+</ol></div>
+<p>Now, while we are taking these three steps, we also need to watch out for one of two conditions:</p>
+<ul>
+<li><p>If the counter grows above <small>18</small>, we stop appending to the buffer. We continue reading the digits and sending them to the output.</p></li>
+<li><p>If, or rather <i>when</i>, the next input character is not a digit, we are done inputting for now.</p>
+<p>Incidentally, we can simply discard the non–digit, unless it is a <span class="constant"><code><b>#</b></code></span>, which we must return to the input stream. It starts a comment, so we must see it after we are done producing output and start looking for more input.</p></li>
+</ul>
+<p>That still leaves one possibility uncovered: If all the user enters is a zero (or several zeros), we will never find a non–zero to display.</p>
+<p>We can determine this has happened whenever our counter stays at <span class="constant"><code><b>0</b></code></span>. In that case we need to send <span class="constant"><code><b>0</b></code></span> to the output, and perform another “slap in the face”:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+0	???	???	???	???	???
+</pre></blockquote></div></td></tr></table>
+<p>Once we have displayed the focal length and determined it is valid (greater than <span class="constant"><code><b>0</b></code></span> but not exceeding <small>18</small> digits), we can calculate the pinhole diameter.</p>
+<p>It is not by coincidence that <i>pinhole</i> contains the word <i>pin</i>. Indeed, many a pinhole literally is a <i>pin hole</i>, a hole carefully punched with the tip of a pin.</p>
+<p>That is because a typical pinhole is very small. Our formula gets the result in millimeters. We will multiply it by <span class="constant"><code><b>1000</b></code></span>, so we can output the result in <i>microns</i>.</p>
+<p>At this point we have yet another trap to face: <i>Too much precision.</i></p>
+<p>Yes, the <small>FPU</small> was designed for high precision mathematics. But we are not dealing with high precision mathematics. We are dealing with physics (optics, specifically).</p>
+<p>Suppose we want to convert a truck into a pinhole camera (we would not be the first ones to do that!). Suppose its box is <span class="constant"><code><b>12</b></code></span> meters long, so we have the focal length of <span class="constant"><code><b>12000</b></code></span>. Well, using Bender’s constant, it gives us square root of <span class="constant"><code><b>12000</b></code></span> multiplied by <span class="constant"><code><b>0.04</b></code></span>, which is <span class="constant"><code><b>4.381780460</b></code></span> millimeters, or <span class="constant"><code><b>4381.780460</b></code></span> microns.</p>
+<p>Put either way, the result is absurdly precise. Our truck is not <i>exactly</i> <span class="constant"><code><b>12000</b></code></span> millimeters long. We did not measure its length with such a precision, so stating we need a pinhole with the diameter of <span class="constant"><code><b>4.381780460</b></code></span> millimeters is, well, deceiving. <span class="constant"><code><b>4.4</b></code></span> millimeters would do just fine.</p>
+<blockquote>
+<b>N.B.:</b> I “only” used ten digits in the above example. Imagine the absurdity of going for all <small>18</small>!</blockquote>
+<p>We need to limit the number of significant digits of our result. One way of doing it is by using an integer representing microns. So, our truck would need a pinhole with the diameter of <span class="constant"><code><b>4382</b></code></span> microns. Looking at that number, we still decide that <span class="constant"><code><b>4400</b></code></span> microns, or <span class="constant"><code><b>4.4</b></code></span> millimeters is close enough.</p>
+<p>Additionally, we can decide that no matter how big a result we get, we only want to display four siginificant digits (or any other number of them, of course). Alas, the <small>FPU</small> does not offer rounding to a specific number of digits (after all, it does not view the numbers as decimal but as binary).</p>
+<p>We, therefore, must devise an algorithm to reduce the number of significant digits.</p>
+<p>Here is mine (I think it is awkward—if you know a better one, <i>please</i>, let me know):</p>
+<div class="procedure"><ol type="1">
+<li><p>Initialize a counter to <span class="constant"><code><b>0</b></code></span>.</p></li>
+<li><p>While the number is greater than or equal to <span class="constant"><code><b>10000</b></code></span>, divide it by <span class="constant"><code><b>10</b></code></span> and increase the counter.</p></li>
+<li><p>Output the result.</p></li>
+<li><p>While the counter is greater than <span class="constant"><code><b>0</b></code></span>, output <span class="constant"><code><b>0</b></code></span> and decrease the counter.</p></li>
+</ol></div>
+<blockquote>
+<b>N.B.:</b> The <span class="constant"><code><b>10000</b></code></span> is only good if you want <i>four</i> significant digits. For any other number of significant digits, replace <span class="constant"><code><b>10000</b></code></span> with <span class="constant"><code><b>10</b></code></span> raised to the number of significant digits.</blockquote>
+<p>We will, then, output the pinhole diameter in microns, rounded off to four significant digits.</p>
+<p>At this point, we know the <i>focal length</i> and the <i>pinhole diameter</i>. That means we have enough information to also calculate the <i>f–number</i>.</p>
+<p>We will display the f–number, rounded to four significant digits. Chances are the f–number will tell us very little. To make it more meaningful, we can find the nearest <i>normalized f–number</i>, i.e., the nearest power of the square root of <small>2</small>.</p>
+<p>We do that by multiplying the actual f–number by itself, which, of course, will give us its <span class="function"><code><b>square</b></code></span>. We will then calculate its base–<small>2</small> logarithm, which is much easier to do than calculating the base–square–root–of–<small>2</small> logarithm! We will round the result to the nearest integer. Next, we will raise <small>2</small> to the result. Actually, the <small>FPU</small> gives us a good shortcut to do that: We can use the <span class="opcode"><code><b>fscale</b></code></span> op code to “scale” <small>1</small>, which is analogous to <span class="opcode"><code><b>shift</b></code></span>ing an integer left. Finally, we calculate the square root of it all, and we have the nearest normalized f–number.</p>
+<p>If all that sounds overwhelming—or too much work, perhaps—it may become much clearer if you see the code. It takes <small>9</small> op codes altogether:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	fmul	st0, st0
+	fld1
+	fld	st1
+	fyl2x
+	frndint
+	fld1
+	fscale
+	fsqrt
+	fstp	st1
+</pre></blockquote></div></td></tr></table>
+<p>The first line, <span class="opcode"><code><b>fmul st0, st0</b></code></span>, squares the contents of the <small>TOS</small> (top of the stack, same as <span class="register"><code><b>st</b></code></span>, called <span class="register"><code><b>st0</b></code></span> by <span class="application"><tt><b>nasm</b></tt></span>). The <span class="opcode"><code><b>fld1</b></code></span> pushes <span class="constant"><code><b>1</b></code></span> on the <small>TOS</small>.</p>
+<p>The next line, <span class="opcode"><code><b>fld st1</b></code></span>, pushes the square back to the <small>TOS</small>. At this point the square is both in <span class="register"><code><b>st</b></code></span> and <span class="register"><code><b>st(2)</b></code></span> (it will become clear why we leave a second copy on the stack in a moment). <span class="register"><code><b>st(1)</b></code></span> contains <span class="constant"><code><b>1</b></code></span>.</p>
+<p>Next, <span class="opcode"><code><b>fyl2x</b></code></span> calculates base–<small>2</small> logarithm of <span class="register"><code><b>st</b></code></span> multiplied by <span class="register"><code><b>st(1)</b></code></span>. That is why we placed <span class="constant"><code><b>1</b></code></span> on <span class="register"><code><b>st(1)</b></code></span> before.</p>
+<p>At this point, <span class="register"><code><b>st</b></code></span> contains the logarithm we have just calculated, <span class="register"><code><b>st(1)</b></code></span> contains the square of the actual f–number we saved for later.</p>
+<p><span class="opcode"><code><b>frndint</b></code></span> rounds the <small>TOS</small> to the nearest integer. <span class="opcode"><code><b>fld1</b></code></span> pushes a <span class="constant"><code><b>1</b></code></span>. <span class="opcode"><code><b>fscale</b></code></span> shifts the <span class="constant"><code><b>1</b></code></span> we have on the <small>TOS</small> by the value in <span class="register"><code><b>st(1)</b></code></span>, effectively raising <small>2</small> to <span class="register"><code><b>st(1)</b></code></span>.</p>
+<p>Finally, <span class="opcode"><code><b>fsqrt</b></code></span> calculates the square root of the result, i.e., the nearest normalized f–number.</p>
+<p>We now have the nearest normalized f–number on the <small>TOS</small>, the base–<small>2</small> logarithm rounded to the nearest integer in <span class="register"><code><b>st(1)</b></code></span>, and the square of the actual f–number in <span class="register"><code><b>st(2)</b></code></span>. We are saving the value in <span class="register"><code><b>st(2)</b></code></span> for later.</p>
+<p>But we do not need the contents of <span class="register"><code><b>st(1)</b></code></span> anymore. The last line, <span class="opcode"><code><b>fstp st1</b></code></span>, places the contents of <span class="register"><code><b>st</b></code></span> to <span class="register"><code><b>st(1)</b></code></span>, and pops. As a result, what was <span class="register"><code><b>st(1)</b></code></span> is now <span class="register"><code><b>st</b></code></span>, what was <span class="register"><code><b>st(2)</b></code></span> is now <span class="register"><code><b>st(1)</b></code></span>, etc. The new <span class="register"><code><b>st</b></code></span> contains the normalized f–number. The new <span class="register"><code><b>st(1)</b></code></span> contains the square of the actual f–number we have stored there for posterity.</p>
+<p>At this point, we are ready to output the normalized f–number. Because it is normalized, we will not round it off to four significant digits, but will send it out in its full precision.</p>
+<p>The normalized f-number is useful as long as it is reasonably small and can be found on our light meter. Otherwise we need a different method of determining proper exposure.</p>
+<p>Earlier we have figured out the formula of calculating proper exposure at an arbitrary f–number from that measured at a different f–number.</p>
+<p>Every light meter I have ever seen can determine proper exposure at f<small>5</small>.<small>6</small>. We will, therefore, calculate an <i>“f<small>5</small>.<small>6</small> multiplier,”</i> i.e., by how much we need to multiply the exposure measured at f<small>5</small>.<small>6</small> to determine the proper exposure for our pinhole camera.</p>
+<p>From the above formula we know this factor can be calculated by dividing our f–number (the actual one, not the normalized one) by <span class="constant"><code><b>5.6</b></code></span>, and squaring the result.</p>
+<p>Mathematically, dividing the square of our f–number by the square of <span class="constant"><code><b>5.6</b></code></span> will give us the same result.</p>
+<p>Computationally, we do not want to square two numbers when we can only square one. So, the first solution seems better at first.</p>
+<p>But...</p>
+<p><span class="constant"><code><b>5.6</b></code></span> is a <i>constant</i>. We do not have to have our <small>FPU</small> waste precious cycles. We can just tell it to divide the square of the f–number by whatever <span class="constant"><code><b>5.6²</b></code></span> equals to. Or we can divide the f–number by <span class="constant"><code><b>5.6</b></code></span>, and then square the result. The two ways now seem equal.</p>
+<p>But, they are not!</p>
+<p>Having studied the principles of photography above, we remember that the <span class="constant"><code><b>5.6</b></code></span> is actually square root of <small>2</small> raised to the fifth power. An <i>irrational</i> number. The square of this number is <i>exactly</i> <span class="constant"><code><b>32</b></code></span>.</p>
+<p>Not only is <span class="constant"><code><b>32</b></code></span> an integer, it is a power of <small>2</small>. We do not need to divide the square of the f–number by <span class="constant"><code><b>32</b></code></span>. We only need to use <span class="opcode"><code><b>fscale</b></code></span> to shift it right by five positions. In the <small>FPU</small> lingo it means we will <span class="opcode"><code><b>fscale</b></code></span> it with <span class="register"><code><b>st(1)</b></code></span> equal to <span class="constant"><code><b>-5</b></code></span>. That is <i>much faster</i> than a division.</p>
+<p>So, now it has become clear why we have saved the square of the f–number on the top of the <small>FPU</small> stack. The calculation of the f<small>5</small>.<small>6</small> multiplier is the easiest calculation of this entire program! We will output it rounded to four significant digits.</p>
+<p>There is one more useful number we can calculate: The number of stops our f–number is from f<small>5</small>.<small>6</small>. This may help us if our f–number is just outside the range of our light meter, but we have a shutter which lets us set various speeds, and this shutter uses stops.</p>
+<p>Say, our f–number is <small>5</small> stops from f<small>5</small>.<small>6</small>, and the light meter says we should use <small>1</small>/<small>1000</small> sec. Then we can set our shutter speed to <small>1</small>/<small>1000</small> first, then move the dial by <small>5</small> stops.</p>
+<p>This calculation is quite easy as well. All we have to do is to calculate the base-<small>2</small> logarithm of the f<small>5</small>.<small>6</small> multiplier we had just calculated (though we need its value from before we rounded it off). We then output the result rounded to the nearest integer. We do not need to worry about having more than four significant digits in this one: The result is most likely to have only one or two digits anyway.</p>
+</div>
+</div>
+<div class="sect1"><a name="fpu-optimizations" />
+<h2>12.4. FPU Optimizations</h2>
+<p>In assembly language we can optimize the <small>FPU</small> code in ways impossible in high languages, including <small>C</small>.</p>
+<p>Whenever a <small>C</small> function needs to calculate a floating–point value, it loads all necessary variables and constants into <small>FPU</small> registers. It then does whatever calculation is required to get the correct result. Good <small>C</small> compilers can optimize that part of the code really well.</p>
+<p>It “returns” the value by leaving the result on the <small>TOS</small>. However, before it returns, it cleans up. Any variables and constants it used in its calculation are now gone from the <small>FPU</small>.</p>
+<p>It cannot do what we just did above: We calculated the square of the f–number and kept it on the stack for later use by another function.</p>
+<p>We <i>knew</i> we would need that value later on. We also knew we had enough room on the stack (which only has room for <small>8</small> numbers) to store it there.</p>
+<p>A <small>C</small> compiler has no way of knowing that a value it has on the stack will be required again in the very near future.</p>
+<p>Of course, the <small>C</small> programmer may know it. But the only recourse he has is to store the value in a memory variable.</p>
+<p>That means, for one, the value will be changed from the <small>80</small>-bit precision used internally by the <small>FPU</small> to a <small>C</small> <i>double</i> (<small>64</small> bits) or even <i>single</i> (<small>32</small> bits).</p>
+<p>That also means that the value must be moved from the <small>TOS</small> into the memory, and then back again. Alas, of all <small>FPU</small> operations, the ones that access the computer memory are the slowest.</p>
+<p>So, whenever programming the <small>FPU</small> in assembly language, look for the ways of keeping intermediate results on the <small>FPU</small> stack.</p>
+<p>We can take that idea even further! In our program we are using a <i>constant</i> (the one we named <span class="constant"><code><b>PC</b></code></span>).</p>
+<p>It does not matter how many pinhole diameters we are calculating: <small>1</small>, <small>10</small>, <small>20</small>, <small>1000</small>, we are always using the same constant. Therefore, we can optimize our program by keeping the constant on the stack all the time.</p>
+<p>Early on in our program, we are calculating the value of the above constant. We need to divide our input by <span class="constant"><code><b>10</b></code></span> for every digit in the constant.</p>
+<p>It is much faster to multiply than to divide. So, at the start of our program, we divide <span class="constant"><code><b>10</b></code></span> into <span class="constant"><code><b>1</b></code></span> to obtain <span class="constant"><code><b>0.1</b></code></span>, which we then keep on the stack: Instead of dividing the input by <span class="constant"><code><b>10</b></code></span> for every digit, we multiply it by <span class="constant"><code><b>0.1</b></code></span>.</p>
+<p>By the way, we do not input <span class="constant"><code><b>0.1</b></code></span> directly, even though we could. We have a reason for that: While <span class="constant"><code><b>0.1</b></code></span> can be expressed with just one decimal place, we do not know how many <i>binary</i> places it takes. We, therefore, let the <small>FPU</small> calculate its binary value to its own high precision.</p>
+<p>We are using other constants: We multiply the pinhole diameter by <span class="constant"><code><b>1000</b></code></span> to convert it from millimeters to microns. We compare numbers to <span class="constant"><code><b>10000</b></code></span> when we are rounding them off to four significant digits. So, we keep both, <span class="constant"><code><b>1000</b></code></span> and <span class="constant"><code><b>10000</b></code></span>, on the stack. And, of course, we reuse the <span class="constant"><code><b>0.1</b></code></span> when rounding off numbers to four digits.</p>
+<p>Last but not least, we keep <span class="constant"><code><b>-5</b></code></span> on the stack. We need it to scale the square of the f–number, instead of dividing it by <span class="constant"><code><b>32</b></code></span>. It is not by coincidence we load this constant last. That makes it the top of the stack when only the constants are on it. So, when the square of the f–number is being scaled, the <span class="constant"><code><b>-5</b></code></span> is at <span class="register"><code><b>st(1)</b></code></span>, precisely where <span class="opcode"><code><b>fscale</b></code></span> expects it to be.</p>
+<p>It is common to create certain constants from scratch instead of loading them from the memory. That is what we are doing with <span class="constant"><code><b>-5</b></code></span>:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+	fld1			; TOS =  1
+	fadd	st0, st0	; TOS =  2
+	fadd	st0, st0	; TOS =  4
+	fld1			; TOS =  1
+	faddp	st1, st0	; TOS =  5
+	fchs			; TOS = -5
+</pre></blockquote></div></td></tr></table>
+<p>We can generalize all these optimizations into one rule: <i>Keep repeat values on the stack!</i></p>
+<blockquote>
+<b>T<small>IP</small>:</b> <i>PostScript</i> is a stack–oriented programming language. There are many more books available about PostScript than about the <small>FPU</small> assembly language: Mastering PostScript will help you master the <small>FPU</small>.</blockquote>
+</div>
+<div class="sect1"><a name="pinhole-the-code" />
+<h2>12.5. <span class="application"><tt><b>pinhole</b></tt></span>—The Code</h2>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+;;;;;;; pinhole.asm ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Find various parameters of a pinhole camera construction and use
+;
+; Started:	 9-Jun-2001
+; Updated:	10-Jun-2001
+;
+; Copyright (c) 2001 G. Adam Stanislav
+; All rights reserved.
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+%include	'system.inc'
+
+%define	BUFSIZE	2048
+
+section	.data
+align 4
+ten	dd	10
+thousand	dd	1000
+tthou	dd	10000
+fd.in	dd	stdin
+fd.out	dd	stdout
+envar	db	'PINHOLE='	; Exactly 8 bytes, or 2 dwords long
+pinhole	db	'04,', 		; Bender's constant (0.04)
+connors	db	'037', 0Ah	; Connors' constant
+usg	db	'Usage: pinhole [-b] [-c] [-e] [-p &lt;value&gt;] [-o &lt;outfile&gt;] [-i &lt;infile&gt;]', 0Ah
+usglen	equ	usg
+iemsg	db	"pinhole: Can't open input file", 0Ah
+iemlen	equ	iemsg
+oemsg	db	"pinhole: Can't create output file", 0Ah
+oemlen	equ	oemsg
+pinmsg	db	"pinhole: The PINHOLE constant must not be 0", 0Ah
+pinlen	equ	pinmsg
+toobig	db	"pinhole: The PINHOLE constant may not exceed 18 decimal places", 0Ah
+biglen	equ	toobig
+huhmsg	db	9, '???'
+separ	db	9, '???'
+sep2	db	9, '???'
+sep3	db	9, '???'
+sep4	db	9, '???', 0Ah
+huhlen	equ	huhmsg
+header	db	'focal length in millimeters,pinhole diameter in microns,'
+	db	'F-number,normalized F-number,F-5.6 multiplier,stops '
+	db	'from F-5.6', 0Ah
+headlen	equ	header
+
+section .bss
+ibuffer	resb	BUFSIZE
+obuffer	resb	BUFSIZE
+dbuffer	resb	20		; decimal input buffer
+bbuffer	resb	10		; BCD buffer
+
+section	.text
+align 4
+huh:
+	call	write
+	push	dword huhlen
+	push	dword huhmsg
+	push	dword [fd.out]
+	sys.write
+	add	esp, byte 12
+	ret
+
+align 4
+perr:
+	push	dword pinlen
+	push	dword pinmsg
+	push	dword stderr
+	sys.write
+	push	dword 4		; return failure
+	sys.exit
+
+align 4
+consttoobig:
+	push	dword biglen
+	push	dword toobig
+	push	dword stderr
+	sys.write
+	push	dword 5		; return failure
+	sys.exit
+
+align 4
+ierr:
+	push	dword iemlen
+	push	dword iemsg
+	push	dword stderr
+	sys.write
+	push	dword 1		; return failure
+	sys.exit
+
+align 4
+oerr:
+	push	dword oemlen
+	push	dword oemsg
+	push	dword stderr
+	sys.write
+	push	dword 2
+	sys.exit
+
+align 4
+usage:
+	push	dword usglen
+	push	dword usg
+	push	dword stderr
+	sys.write
+	push	dword 3
+	sys.exit
+
+align 4
+global	_start
+_start:
+	add	esp, byte 8	; discard argc and argv[0]
+	sub	esi, esi
+
+.arg:
+	pop	ecx
+	or	ecx, ecx
+	je	near .getenv		; no more arguments
+
+	; ECX contains the pointer to an argument
+	cmp	byte [ecx], '-'
+	jne	usage
+
+	inc	ecx
+	mov	ax, [ecx]
+	inc	ecx
+
+.o:
+	cmp	al, 'o'
+	jne	.i
+
+	; Make sure we are not asked for the output file twice
+	cmp	dword [fd.out], stdout
+	jne	usage
+
+	; Find the path to output file - it is either at [ECX+1],
+	; i.e., -ofile --
+	; or in the next argument,
+	; i.e., -o file
+
+	or	ah, ah
+	jne	.openoutput
+	pop	ecx
+	jecxz	usage
+
+.openoutput:
+	push	dword 420	; file mode (644 octal)
+	push	dword 0200h | 0400h | 01h
+	; O_CREAT | O_TRUNC | O_WRONLY
+	push	ecx
+	sys.open
+	jc	near oerr
+
+	add	esp, byte 12
+	mov	[fd.out], eax
+	jmp	short .arg
+
+.i:
+	cmp	al, 'i'
+	jne	.p
+
+	; Make sure we are not asked twice
+	cmp	dword [fd.in], stdin
+	jne	near usage
+
+	; Find the path to the input file
+	or	ah, ah
+	jne	.openinput
+	pop	ecx
+	or	ecx, ecx
+	je near usage
+
+.openinput:
+	push	dword 0		; O_RDONLY
+	push	ecx
+	sys.open
+	jc	near ierr		; open failed
+
+	add	esp, byte 8
+	mov	[fd.in], eax
+	jmp	.arg
+
+.p:
+	cmp	al, 'p'
+	jne	.c
+	or	ah, ah
+	jne	.pcheck
+
+	pop	ecx
+	or	ecx, ecx
+	je	near usage
+
+	mov	ah, [ecx]
+
+.pcheck:
+	cmp	ah, '0'
+	jl	near usage
+	cmp	ah, '9'
+	ja	near usage
+	mov	esi, ecx
+	jmp	.arg
+
+.c:
+	cmp	al, 'c'
+	jne	.b
+	or	ah, ah
+	jne	near usage
+	mov	esi, connors
+	jmp	.arg
+
+.b:
+	cmp	al, 'b'
+	jne	.e
+	or	ah, ah
+	jne	near usage
+	mov	esi, pinhole
+	jmp	.arg
+
+.e:
+	cmp	al, 'e'
+	jne	near usage
+	or	ah, ah
+	jne	near usage
+	mov	al, ','
+	mov	[huhmsg], al
+	mov	[separ], al
+	mov	[sep2], al
+	mov	[sep3], al
+	mov	[sep4], al
+	jmp	.arg
+
+align 4
+.getenv:
+	; If ESI = 0, we did not have a -p argument,
+	; and need to check the environment for "PINHOLE="
+	or	esi, esi
+	jne	.init
+
+	sub	ecx, ecx
+
+.nextenv:
+	pop	esi
+	or	esi, esi
+	je	.default	; no PINHOLE envar found
+
+	; check if this envar starts with 'PINHOLE='
+	mov	edi, envar
+	mov	cl, 2		; 'PINHOLE=' is 2 dwords long
+rep	cmpsd
+	jne	.nextenv
+
+	; Check if it is followed by a digit
+	mov	al, [esi]
+	cmp	al, '0'
+	jl	.default
+	cmp	al, '9'
+	jbe	.init
+	; fall through
+
+align 4
+.default:
+	; We got here because we had no -p argument,
+	; and did not find the PINHOLE envar.
+	mov	esi, pinhole
+	; fall through
+
+align 4
+.init:
+	sub	eax, eax
+	sub	ebx, ebx
+	sub	ecx, ecx
+	sub	edx, edx
+	mov	edi, dbuffer+1
+	mov	byte [dbuffer], '0'
+
+	; Convert the pinhole constant to real
+.constloop:
+	lodsb
+	cmp	al, '9'
+	ja	.setconst
+	cmp	al, '0'
+	je	.processconst
+	jb	.setconst
+
+	inc	dl
+
+.processconst:
+	inc	cl
+	cmp	cl, 18
+	ja	near consttoobig
+	stosb
+	jmp	short .constloop
+
+align 4
+.setconst:
+	or	dl, dl
+	je	near perr
+
+	finit
+	fild	dword [tthou]
+
+	fld1
+	fild	dword [ten]
+	fdivp	st1, st0
+
+	fild	dword [thousand]
+	mov	edi, obuffer
+
+	mov	ebp, ecx
+	call	bcdload
+
+.constdiv:
+	fmul	st0, st2
+	loop	.constdiv
+
+	fld1
+	fadd	st0, st0
+	fadd	st0, st0
+	fld1
+	faddp	st1, st0
+	fchs
+
+	; If we are creating a CSV file,
+	; print header
+	cmp	byte [separ], ','
+	jne	.bigloop
+
+	push	dword headlen
+	push	dword header
+	push	dword [fd.out]
+	sys.write
+
+.bigloop:
+	call	getchar
+	jc	near done
+
+	; Skip to the end of the line if you got '#'
+	cmp	al, '#'
+	jne	.num
+	call	skiptoeol
+	jmp	short .bigloop
+
+.num:
+	; See if you got a number
+	cmp	al, '0'
+	jl	.bigloop
+	cmp	al, '9'
+	ja	.bigloop
+
+	; Yes, we have a number
+	sub	ebp, ebp
+	sub	edx, edx
+
+.number:
+	cmp	al, '0'
+	je	.number0
+	mov	dl, 1
+
+.number0:
+	or	dl, dl		; Skip leading 0's
+	je	.nextnumber
+	push	eax
+	call	putchar
+	pop	eax
+	inc	ebp
+	cmp	ebp, 19
+	jae	.nextnumber
+	mov	[dbuffer+ebp], al
+
+.nextnumber:
+	call	getchar
+	jc	.work
+	cmp	al, '#'
+	je	.ungetc
+	cmp	al, '0'
+	jl	.work
+	cmp	al, '9'
+	ja	.work
+	jmp	short .number
+
+.ungetc:
+	dec	esi
+	inc	ebx
+
+.work:
+	; Now, do all the work
+	or	dl, dl
+	je	near .work0
+
+	cmp	ebp, 19
+	jae	near .toobig
+
+	call	bcdload
+
+	; Calculate pinhole diameter
+
+	fld	st0	; save it
+	fsqrt
+	fmul	st0, st3
+	fld	st0
+	fmul	st5
+	sub	ebp, ebp
+
+	; Round off to 4 significant digits
+.diameter:
+	fcom	st0, st7
+	fstsw	ax
+	sahf
+	jb	.printdiameter
+	fmul	st0, st6
+	inc	ebp
+	jmp	short .diameter
+
+.printdiameter:
+	call	printnumber	; pinhole diameter
+
+	; Calculate F-number
+
+	fdivp	st1, st0
+	fld	st0
+
+	sub	ebp, ebp
+
+.fnumber:
+	fcom	st0, st6
+	fstsw	ax
+	sahf
+	jb	.printfnumber
+	fmul	st0, st5
+	inc	ebp
+	jmp	short .fnumber
+
+.printfnumber:
+	call	printnumber	; F number
+
+	; Calculate normalized F-number
+	fmul	st0, st0
+	fld1
+	fld	st1
+	fyl2x
+	frndint
+	fld1
+	fscale
+	fsqrt
+	fstp	st1
+
+	sub	ebp, ebp
+	call	printnumber
+
+	; Calculate time multiplier from F-5.6
+
+	fscale
+	fld	st0
+
+	; Round off to 4 significant digits
+.fmul:
+	fcom	st0, st6
+	fstsw	ax
+	sahf
+
+	jb	.printfmul
+	inc	ebp
+	fmul	st0, st5
+	jmp	short .fmul
+
+.printfmul:
+	call	printnumber	; F multiplier
+
+	; Calculate F-stops from 5.6
+
+	fld1
+	fxch	st1
+	fyl2x
+
+	sub	ebp, ebp
+	call	printnumber
+
+	mov	al, 0Ah
+	call	putchar
+	jmp	.bigloop
+
+.work0:
+	mov	al, '0'
+	call	putchar
+
+align 4
+.toobig:
+	call	huh
+	jmp	.bigloop
+
+align 4
+done:
+	call	write		; flush output buffer
+
+	; close files
+	push	dword [fd.in]
+	sys.close
+
+	push	dword [fd.out]
+	sys.close
+
+	finit
+
+	; return success
+	push	dword 0
+	sys.exit
+
+align 4
+skiptoeol:
+	; Keep reading until you come to cr, lf, or eof
+	call	getchar
+	jc	done
+	cmp	al, 0Ah
+	jne	.cr
+	ret
+
+.cr:
+	cmp	al, 0Dh
+	jne	skiptoeol
+	ret
+
+align 4
+getchar:
+	or	ebx, ebx
+	jne	.fetch
+
+	call	read
+
+.fetch:
+	lodsb
+	dec	ebx
+	clc
+	ret
+
+read:
+	jecxz	.read
+	call	write
+
+.read:
+	push	dword BUFSIZE
+	mov	esi, ibuffer
+	push	esi
+	push	dword [fd.in]
+	sys.read
+	add	esp, byte 12
+	mov	ebx, eax
+	or	eax, eax
+	je	.empty
+	sub	eax, eax
+	ret
+
+align 4
+.empty:
+	add	esp, byte 4
+	stc
+	ret
+
+align 4
+putchar:
+	stosb
+	inc	ecx
+	cmp	ecx, BUFSIZE
+	je	write
+	ret
+
+align 4
+write:
+	jecxz	.ret	; nothing to write
+	sub	edi, ecx	; start of buffer
+	push	ecx
+	push	edi
+	push	dword [fd.out]
+	sys.write
+	add	esp, byte 12
+	sub	eax, eax
+	sub	ecx, ecx	; buffer is empty now
+.ret:
+	ret
+
+align 4
+bcdload:
+	; EBP contains the number of chars in dbuffer
+	push	ecx
+	push	esi
+	push	edi
+
+	lea	ecx, [ebp+1]
+	lea	esi, [dbuffer+ebp-1]
+	shr	ecx, 1
+
+	std
+
+	mov	edi, bbuffer
+	sub	eax, eax
+	mov	[edi], eax
+	mov	[edi+4], eax
+	mov	[edi+2], ax
+
+.loop:
+	lodsw
+	sub	ax, 3030h
+	shl	al, 4
+	or	al, ah
+	mov	[edi], al
+	inc	edi
+	loop	.loop
+
+	fbld	[bbuffer]
+
+	cld
+	pop	edi
+	pop	esi
+	pop	ecx
+	sub	eax, eax
+	ret
+
+align 4
+printnumber:
+	push	ebp
+	mov	al, [separ]
+	call	putchar
+
+	; Print the integer at the TOS
+	mov	ebp, bbuffer+9
+	fbstp	[bbuffer]
+
+	; Check the sign
+	mov	al, [ebp]
+	dec	ebp
+	or	al, al
+	jns	.leading
+
+	; We got a negative number (should never happen)
+	mov	al, '-'
+	call	putchar
+
+.leading:
+	; Skip leading zeros
+	mov	al, [ebp]
+	dec	ebp
+	or	al, al
+	jne	.first
+	cmp	ebp, bbuffer
+	jae	.leading
+
+	; We are here because the result was 0.
+	; Print '0' and return
+	mov	al, '0'
+	jmp	putchar
+
+.first:
+	; We have found the first non-zero.
+	; But it is still packed
+	test	al, 0F0h
+	jz	.second
+	push	eax
+	shr	al, 4
+	add	al, '0'
+	call	putchar
+	pop	eax
+	and	al, 0Fh
+
+.second:
+	add	al, '0'
+	call	putchar
+
+.next:
+	cmp	ebp, bbuffer
+	jb	.done
+
+	mov	al, [ebp]
+	push	eax
+	shr	al, 4
+	add	al, '0'
+	call	putchar
+	pop	eax
+	and	al, 0Fh
+	add	al, '0'
+	call	putchar
+
+	dec	ebp
+	jmp	short .next
+
+.done:
+	pop	ebp
+	or	ebp, ebp
+	je	.ret
+
+.zeros:
+	mov	al, '0'
+	call	putchar
+	dec	ebp
+	jne	.zeros
+
+.ret:
+	ret
+</pre></blockquote></div></td></tr></table>
+<p>The code follows the same format as all the other filters we have seen before, with one subtle exception:</p>
+<blockquote>
+<p>We are no longer assuming that the end of input implies the end of things to do, something we took for granted in the <i>character–oriented</i> filters.</p>
+<p>This filter does not process characters. It processes a <i>language</i> (albeit a very simple one, consisting only of numbers).</p>
+<p>When we have no more input, it can mean one of two things:</p>
+<ul><li><p>We are done and can quit. This is the same as before.</p></li>
+<li><p>The last character we have read was a digit. We have stored it at the end of our <small>ASCII</small>–to–float conversion buffer. We now need to convert the contents of that buffer into a number and write the last line of our output.</p></li>
+</ul>
+<p>For that reason, we have modified our <span class="function"><code><b>getchar</b></code></span> and our <span class="function"><code><b>read</b></code></span> routines to return with the <span class="register"><code><b>carry flag</b></code></span> <i>clear</i> whenever we are fetching another character from the input, or the <span class="register"><code><b>carry flag</b></code></span> <i>set</i> whenever there is no more input.</p>
+<p>Of course, we are still using assembly language magic to do that! Take a good look at <span class="function"><code><b>getchar</b></code></span>. It <i>always</i> returns with the <span class="register"><code><b>carry flag</b></code></span> <i>clear</i>.</p>
+<p>Yet, our main code relies on the <span class="register"><code><b>carry flag</b></code></span> to tell it when to quit—and it works.</p>
+<p>The magic is in <span class="function"><code><b>read</b></code></span>. Whenever it receives more input from the system, it just returns to <span class="function"><code><b>getchar</b></code></span>, which fetches a character from the input buffer, <i>clears</i> the <span class="register"><code><b>carry flag</b></code></span> and returns.</p>
+<p>But when <span class="function"><code><b>read</b></code></span> receives no more input from the system, it does <i>not</i> return to <span class="function"><code><b>getchar</b></code></span> at all. Instead, the <span class="opcode"><code><b>add esp, byte 4</b></code></span> op code adds <span class="constant"><code><b>4</b></code></span> to <span class="register"><code><b>ESP</b></code></span>, <i>sets</i> the <span class="register"><code><b>carry flag</b></code></span>, and returns.</p>
+<p>So, where does it return to? Whenever a program uses the <span class="opcode"><code><b>call</b></code></span> op code, the microprocessor <span class="opcode"><code><b>push</b></code></span>es the return address, i.e., it stores it on the top of the stack (not the <small>FPU</small> stack, the system stack, which is in the memory). When a program uses the <span class="opcode"><code><b>ret</b></code></span> op code, the microprocessor <span class="opcode"><code><b>pop</b></code></span>s the return value from the stack, and jumps to the address that was stored there.</p>
+<p>But since we added <span class="constant"><code><b>4</b></code></span> to <span class="register"><code><b>ESP</b></code></span> (which is the stack pointer register), we have effectively given the microprocessor a minor case of <i>amnesia</i>: It no longer remembers it was <span class="function"><code><b>getchar</b></code></span> that <span class="opcode"><code><b>call</b></code></span>ed <span class="function"><code><b>read</b></code></span>.</p>
+<p>And since <span class="function"><code><b>getchar</b></code></span> never <span class="opcode"><code><b>push</b></code></span>ed anything before <span class="opcode"><code><b>call</b></code></span>ing <span class="function"><code><b>read</b></code></span>, the top of the stack now contains the return address to whatever or whoever <span class="opcode"><code><b>call</b></code></span>ed <span class="function"><code><b>getchar</b></code></span>. As far as that caller is concerned, he <span class="opcode"><code><b>call</b></code></span>ed <span class="function"><code><b>getchar</b></code></span>, which <span class="opcode"><code><b>ret</b></code></span>urned with the <span class="register"><code><b>carry flag</b></code></span> set!</p>
+</blockquote>
+<p>Other than that, the <span class="function"><code><b>bcdload</b></code></span> routine is caught up in the middle of a Lilliputian conflict between the Big–Endians and the Little–Endians.</p>
+<p>It is converting the text representation of a number into that number: The text is stored in the big–endian order, but the <i>packed decimal</i> is little–endian.</p>
+<p>To solve the conflict, we use the <span class="function"><code><b>std</b></code></span> op code early on. We cancel it with <span class="function"><code><b>cld</b></code></span> later on: It is quite important we do not <span class="function"><code><b>call</b></code></span> anything that may depend on the default setting of the <i>direction flag</i> while <span class="function"><code><b>std</b></code></span> is active.</p>
+<p>Everything else in this code should be quite clear, providing you have read the entire chapter that precedes it.</p>
+<p>It is a classical example of the adage that programming requires a lot of thought and only a little coding. Once we have thought through every tiny detail, the code almost writes itself.</p>
+</div>
+<div class="sect1"><a name="pinhole-using" />
+<h2>12.6. Using <span class="application"><tt><b>pinhole</b></tt></span></h2>
+<p>Because we have decided to make the program <i>ignore</i> any input except for numbers (and even those inside a comment), we can actually perform <i>textual queries</i>. We do not <i>have to</i>, but we <i>can</i>.</p>
+<p>In my humble opinion, forming a textual query, instead of having to follow a very strict syntax, makes software much more user friendly.</p>
+<p>Suppose we want to build a pinhole camera to use the <small>4</small>x<small>5</small> inch film. The standard focal length for that film is about <small>150</small>mm. We want to <i>fine–tune</i> our focal length so the pinhole diameter is as round a number as possible. Let us also suppose we are quite comfortable with cameras but somewhat intimidated by computers. Rather than just have to type in a bunch of numbers, we want to <i>ask</i> a couple of questions.</p>
+<p>Our session might look like this:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>pinhole
+
+Computer,
+
+What size pinhole do I need for the focal length of 150?</b></kbd></span>
+150	490	306	362	2930	12
+<span class="userinput"><kbd><b>Hmmm... How about 160?</b></kbd></span>
+160	506	316	362	3125	12
+<span class="userinput"><kbd><b>Let's make it 155, please.</b></kbd></span>
+155	498	311	362	3027	12
+<span class="userinput"><kbd><b>Ah, let's try 157...</b></kbd></span>
+157	501	313	362	3066	12
+<span class="userinput"><kbd><b>156?</b></kbd></span>
+156	500	312	362	3047	12
+<span class="userinput"><kbd><b>That's it! Perfect! Thank you very much!
+^D</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>We have found that while for the focal length of 150, our pinhole diameter should be 490 microns, or 0.49 mm, if we go with the almost identical focal length of 156 mm, we can get away with a pinhole diameter of exactly one half of a millimeter.</p>
+</div>
+<div class="sect1"><a name="pinhole-scripting" />
+<h2>12.7. Scripting</h2>
+<p>Because we have chosen the <span class="constant"><code><b>#</b></code></span> character to denote the start of a comment, we can treat our <span class="application"><tt><b>pinhole</b></tt></span> software as a <i>scripting language</i>.</p>
+<p>You have probably seen <span class="application"><tt><b>shell</b></tt></span> <i>scripts</i> that start with:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+#! /bin/sh
+</pre></blockquote></div></td></tr></table>
+<p>...or...</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+#!/bin/sh
+</pre></blockquote></div></td></tr></table> <p>...because the blank space after the <span class="function"><code><b>#!</b></code></span> is optional.</p>
+<p>Whenever Unix is asked to run an executable file which starts with the <span class="function"><code><b>#!</b></code></span>, it assumes the file is a script. It adds the command to the rest of the first line of the script, and tries to execute that.</p>
+<p>Suppose now that we have installed <span class="application"><tt><b>pinhole</b></tt></span> in <span class="application"><tt><b>/usr/local/bin/</b></tt></span>, we can now write a script to calculate various pinhole diameters suitable for various focal lengths commonly used with the <small>120</small> film.</p>
+<p>The script might look something like this:</p>
+<table width="100%"><tr><td class="programlisting"><div class="programlisting"><blockquote><pre>
+#! /usr/local/bin/pinhole -b -i
+# Find the best pinhole diameter
+# for the 120 film
+
+### Standard
+80
+
+### Wide angle
+30, 40, 50, 60, 70
+
+### Telephoto
+100, 120, 140
+</pre></blockquote></div></td></tr></table>
+<p>Because <small>120</small> is a medium size film, we may name this file <span class="application"><tt><b>medium</b></tt></span>.</p>
+<p>We can set its permissions to execute, and run it as if it were a program:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>chmod 755 medium</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./medium</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>Unix will interpret that last command as:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>/usr/local/bin/pinhole -b -i ./medium</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>It will run that command and display:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+80	358	224	256	1562	11
+30	219	137	128	586	9
+40	253	158	181	781	10
+50	283	177	181	977	10
+60	310	194	181	1172	10
+70	335	209	181	1367	10
+100	400	250	256	1953	11
+120	438	274	256	2344	11
+140	473	296	256	2734	11
+</pre></blockquote></div></td></tr></table>
+<p>
+Now, let us enter:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre><span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./medium -c</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>Unix will treat that as:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>/usr/local/bin/pinhole -b -i ./medium -c</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>That gives it two conflicting options: <span class="parameter"><code><b>-b</b></code></span> and <span class="parameter"><code><b>-c</b></code></span> (Use Bender’s constant and use Connors’ constant). We have programmed it so later options override early ones—our program will calculate everything using Connors’ constant:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre>
+80	331	242	256	1826	11
+30	203	148	128	685	9
+40	234	171	181	913	10
+50	262	191	181	1141	10
+60	287	209	181	1370	10
+70	310	226	256	1598	11
+100	370	270	256	2283	11
+120	405	296	256	2739	11
+140	438	320	362	3196	12
+</pre></blockquote></div></td></tr></table>
+<p>We decide we want to go with Bender’s constant after all. We want to save its values as a comma–separated file:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre><span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>./medium -b -e &gt; bender</b></kbd></span>
+<span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>cat bender</b></kbd></span>
+focal length in millimeters,pinhole diameter in microns,F-number,normalized F-number,F-5.6 multiplier,stops from F-5.6
+80,358,224,256,1562,11
+30,219,137,128,586,9
+40,253,158,181,781,10
+50,283,177,181,977,10
+60,310,194,181,1172,10
+70,335,209,181,1367,10
+100,400,250,256,1953,11
+120,438,274,256,2344,11
+140,473,296,256,2734,11
+<span class="prompt"><tt>%</tt></span>
+</pre></blockquote></div></td></tr></table>
+</div>
+</div>
+<div class="chapter"><a name="caveats" />
+<h1>Chapter 13 – Caveats</h1>
+<p>Assembly language programmers who “grew up” under <small>MS DOS</small> and Windows often tend to take shortcuts. Reading the keyboard scan codes and writing directly to video memory are two classical examples of practices which, under <small>MS DOS</small> are not frowned upon but considered the right thing to do.</p>
+<p>The reason? Both the <small>PC BIOS</small> and <small>MS DOS</small> are notoriously slow when performing these operations.</p>
+<p>You may be tempted to continue similar practices in the Unix environment. For example, I have seen a web site which explains how to access the keyboard scan codes on a popular Unix clone.</p>
+<p>That is generally a <i>very bad idea</i> in Unix environment! Let me explain why.</p>
+<div class="sect1"><a name="protected" />
+<h2>13.1. Unix Is Protected</h2>
+<p>For one thing, it may simply not be possible. Unix runs in protected mode. Only the kernel and device drivers are allowed to access hardware directly. Perhaps a particular Unix clone will let you read the keyboard scan codes, but chances are a real Unix operating system will not. And even if one version may let you do it, the next one may not, so your carefully crafted software may become a dinosaur overnight.</p>
+</div>
+<div class="sect1"><a name="abstraction" />
+<h2>13.2. Unix Is an Abstraction</h2>
+<p>But there is a much more important reason not to try accessing the hardware directly (unless, of course, you are writing a device driver), even on the Unix-like systems that let you do it:</p>
+<p><b>Unix is an abstraction!</b></p>
+<p>There is a major difference in the philosophy of design between <small>MS DOS</small> and Unix. M<small>S DOS</small> was designed as a single-user system. It is run on a computer with a keyboard and a video screen attached directly to that computer. User input is almost guaranteed to come from that keyboard. Your program’s output virtually always ends up on that screen.</p>
+<p>This is <small>NEVER</small> guaranteed under Unix. It is quite common for a Unix user to pipe and redirect program input and output:</p>
+<table width="100%"><tr><td class="screen"><div class="screen"><blockquote><pre><span class="prompt"><tt>%</tt></span> <span class="userinput"><kbd><b>program1 | program2 | program3 > file1</b></kbd></span>
+</pre></blockquote></div></td></tr></table>
+<p>If you have written <span class="application"><tt><b>program2</b></tt></span>, your input does not come from the keyboard but from the output of <span class="application"><tt><b>program1</b></tt></span>. Similarly, your output does not go to the screen but becomes the input for <span class="application"><tt><b>program3</b></tt></span> whose output, in turn, goes to <span class="filename"><tt>file1</tt></span>.</p>
+<p>But there is more! Even if you made sure that your input comes from, and your output goes to, the terminal, there is no guarantee the terminal is a <small>PC</small>: It may not have its video memory where you expect it, nor may its keyboard be producing <small>PC</small>-style scan codes. It may be a Macintosh, or any other computer.</p>
+<p>Now you may be shaking your head: My software is in <small>PC</small> assembly language, how can it run on a Macintosh? But I did not say your software would be running on a Macintosh, only that its terminal may be a Macintosh.</p>
+<p>Under Unix, the terminal does not have to be directly attached to the computer that runs your software, it can even be on another continent, or, for that matter, on another planet. It is perfectly possible that a Macintosh user in Australia connects to a Unix system in North America (or anywhere else) via <span class="application"><tt><b>telnet</b></tt></span>. The software then runs on one computer, while the terminal is on a different computer: If you try to read the scan codes, you will get the wrong input!</p>
+<p>Same holds true about any other hardware: A file you are reading may be on a disk you have no direct access to. A camera you are reading images from may be on a space shuttle, connected to you via satellites.</p>
+<p>That is why under Unix you must never make any assumptions about where your data is coming from and going to. Always let the system handle the physical access to the hardware.</p>
+<blockquote>
+<b>N.B.:</b> These are caveats, not absolute rules. Exceptions are possible. For example, if a text editor has determined it is running on a local machine, it may want to read the scan codes directly for improved control. I am not mentioning these caveats to tell you what to do or what not to do, just to make you aware of certain pitfalls that await you if you have just arrived to Unix form <small>MS DOS</small>. Of course, creative people often break rules, and it is <small>OK</small> as long as they know they are breaking them and why.</blockquote>
+</div>
+</div>
+<hr />
+<div class="appendix">
+<div class="chapter"><a name="pearls" />
+<h1 class="appendix">Appendix A – Assembly Language Pearls</h1>
+<p>Here are some other assembly language articles I have written since starting this tutorial. They are on separate pages mostly to keep this tutorial down to a manageable size.</p>
+<ul>
+<li><p><a target="_top" href="http://www.int80h.org/strlen/">String Length</a> – learn how to calculate the length of a text string in assembly language.</p></li>
+<li><p><a target="_top" href="http://www.int80h.org/smallest/">Smallest Unix Program</a> – see how we can shrink the smallest Unix program.</p></li>
+</ul>
+</div>
+<div class="chapter"><a name="bsd-style-copyright" />
+<h1 class="appendix">Appendix B – BSD Style Copyright</h1>
+<p>If you wish to release your software with a BSD-style copyright, you can find the file <span class="filename"><tt>bsd-style-copyright</tt></span> in several places on your FreeBSD computer. But it uses C-style comments.</p>
+<p>I have edited it for inclusion in assembly language programs. If you want it, download the <a target="_top" href="http://www.int80h.org/bsdasm/copy.txt"><span class="application"><tt><b>nasm</b></tt></span>-compatible BSD-style copyright</a>, insert your name, and include it in your source code.</p>
+</div>
+<div class="chapter"><a name="change-log" />
+<h1 class="appendix">Appendix C – Change Log</h1>
+<p>Originally, this tutorial used <span class="varname"><code><b>.code</b></code></span> as the name of the code section. Traditionally, the name is <span class="varname"><code><b>.text</b></code></span>. I used <span class="varname"><code><b>.code</b></code></span> because it seemed more intuitive, and it worked anyway.</p>
+<p>Alas, as the newer versions of FreeBSD have upgraded to a new version of <span class="application"><tt><b>ld</b></tt></span>, it does not work right anymore. That is why I have now changed all occurances of <span class="varname"><code><b>.code</b></code></span> to <span class="varname"><code><b>.text</b></code></span> in this tutorial. Please, do so in your own code as well.</p></div>
+ <div class="chapter"><a name="acknowledgements" />
+<h1 class="appendix">Appendix D – Acknowledgements</h1>
+<p>This tutorial would never have been possible without the help of many experienced FreeBSD programmers from the <a target="_top" href="mailto:freebsd-hackers@FreeBSD.org">FreeBSD hackers</a> mailing list, many of whom have patiently answered my questions, and pointed me in the right direction in my attempts to explore the inner workings of Unix system programming in general and FreeBSD in particular.</p>
+<p>Thomas M. Sommers opened the door for me. His <a target="_top" href="http://home.ptd.net/~tms2/hello.html">How do I write “Hello, world” in FreeBSD assembler?</a> web page was my first encounter with an example of assembly language programming under FreeBSD.</p>
+<p>Jake Burkholder has kept the door open by willingly answering all of my questions and supplying me with example assembly language source code.</p>
+<p><small>Copyright &copy; 2000-2001 G. Adam Stanislav.<br />
+All rights reserved.</small></p>
+</div>
+</div>
+<p align="center">[ <a href="http://www.int80h.org/">Home</a> | <a href="http://www.FreeBSD.org/tutorials/">Other FreeBSD Tutorials</a> ]</p>
+</body>
+</html>
