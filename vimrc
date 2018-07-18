@@ -1,14 +1,13 @@
-set expandtab
-set textwidth=79
-set tabstop=8
-set softtabstop=4
-set shiftwidth=4
-set autoindent
 syntax off
+nohlsearch
+set ts=2
+set expandtab
+set sw=2
+set keywordprg=perldoc\ -f
+" colorscheme koehler
+" set nu
 
-" map <F2> iTo whom it may concern, <CR><CR><TAB>
-" map <F2> :s#^  #/*#e \| s#$#  */#e <Enter>
-" map <F3> :/^\/\*/s#/*##e | /\*\/$/s#*/##e <Enter>
+autocmd BufNewFile  *.pl      0r ~/.vim/templates/pl.template
 
-" C comment line
-map <F2> :s/^\(.*\)$/\/\* \1 \*\//<CR>
+set backup
+execute "set backupext=_" . strftime("%Y%m%d_%H%M%S~")
