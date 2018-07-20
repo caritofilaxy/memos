@@ -2,3 +2,9 @@ echo "blacklist ${modname}" >> /etc/modprobe.d/blacklist.conf
 depmod -a
 update-initramfs -u -v -k all
 
+if the stuff above does not help just
+
+echo "install ${modname} /bin/true" > /etc/modprobe.d/${modname}.conf
+and reboot
+
+
