@@ -1,0 +1,16 @@
+
+
+
+# apt-get install bridge-utils
+
+# echo "auto xenbr0\niface xenbr0 inet dhcp\n\tbridge_ports enp4s0" >> /etc/network/interfaces
+# perl -i -pe 's/dhcp/manual/ if /enp4s0' /etc/network/interfaces
+# ifup xenbr0
+# brctl show
+
+# apt-get install xen-system
+
+# vim /etc/default/grub.d/xen.cfg
+CMD_LINE_XEN="noreboot dom0_mem=1024M,max:1024"
+
+

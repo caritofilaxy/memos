@@ -1,0 +1,17 @@
+apt-get install \
+xserver-xorg-video-dummy \
+xserver-xorg-input-void \
+xserver-xorg-core \
+xinit \
+xserver-xorg-video-intel \
+xserver-xorg-input-mouse \
+xserver-xorg-input-kbd \
+xserver-xorg-input-evdev \
+xfonts-100dpi \
+xfonts-75dpi \
+xfonts-base \
+xfonts-scalable \
+libgl1-mesa-dri mesa-utils \
+fluxbox
+
+echo "exec fluxbox" >> ~/.xinitrc

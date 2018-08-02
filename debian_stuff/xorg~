@@ -1,0 +1,29 @@
+upgrade to testing
+
+# /etc/apt/sources.list.d/devuan-ascii.list
+deb     http://auto.mirror.devuan.org/merged ascii main
+deb-src http://auto.mirror.devuan.org/merged ascii main
+deb     http://auto.mirror.devuan.org/merged ascii-updates main
+deb-src http://auto.mirror.devuan.org/merged ascii-updates main
+deb     http://auto.mirror.devuan.org/merged ascii-proposed-updates main
+deb-src http://auto.mirror.devuan.org/merged ascii-proposed-updates main
+deb     http://auto.mirror.devuan.org/merged ascii-security main
+deb-src http://auto.mirror.devuan.org/merged ascii-security main
+
+apt-get update
+apt-get install apt
+apt-get upgrade
+apt-get dist-upgrade
+apt-get autoremove
+apt-get install new kernel image
+
+
+minimal xorg
+root@devuan:~# apt-get install xserver-xorg-video-dummy xserver-xorg-input-void
+xserver-xorg-core xinit 
+root@devuan:~# apt-get install xserver-xorg-video-intel
+root@devuan:~# apt-get install xserver-xorg-input-mouse xserver-xorg-input-kbd
+root@devuan:~# apt-get install xserver-xorg-input-synaptics
+root@devuan:~# apt-get install xfonts-100dpi xfonts-75dpi xfonts-base
+xfonts-scalable
+root@devuan:~# apt-get install libgl1-mesa-dri mesa-utils
