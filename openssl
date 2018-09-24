@@ -1,0 +1,3 @@
+# view certificate
+openssl x509 -in acs.qacafe.com.pem -text
+
