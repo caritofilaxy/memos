@@ -1,0 +1,274 @@
+Symptoms:
+
+            The following log messages are seen in 30 minute intervals after upgrading to Junos 15.1 and while using StorFly SSD on
+            RE-S-1800X4 routing engines:
+
+            Feb 20 15:28:19.296 2017  ds-fmb-dc-1 smartd[3914]: %DAEMON-2: Device: /dev/ada0, 2 Offline uncorrectable sectors
+
+            Feb 20 15:58:19.303 2017  ds-fmb-dc-1 smartd[3914]: %DAEMON-2: Device: /dev/ada0, 2 Offline uncorrectable sectors
+
+            Feb 20 16:28:19.306 2017  ds-fmb-dc-1 smartd[3914]: %DAEMON-2: Device: /dev/ada0, 2 Offline uncorrectable sectors
+
+            Feb 20 16:58:19.314 2017  ds-fmb-dc-1 smartd[3914]: %DAEMON-2: Device: /dev/ada0, 2 Offline uncorrectable sectors
+
+            Feb 20 17:28:19.342 2017  ds-fmb-dc-1 smartd[3914]: %DAEMON-2: Device: /dev/ada0, 2 Offline uncorrectable sectors
+
+            Feb 20 17:58:19.352 2017  ds-fmb-dc-1 smartd[3914]: %DAEMON-2: Device: /dev/ada0, 2 Offline uncorrectable sectors
+
+            Feb 20 18:28:19.365 2017  ds-fmb-dc-1 smartd[3914]: %DAEMON-2: Device: /dev/ada0, 2 Offline uncorrectable sectors
+
+            Cause:
+
+            In Junos, smartd is the daemon that interfaces with the hard disk's Self-Monitoring Analysis and Reporting Technology (SMART)
+            system. The SMART system monitors the drive for anything that might seem out of the ordinary and uses attributes to check the
+            disk condition and to analyze its reliability. Smartd runs in the background and continuously monitors the drive and reports any
+            errors.
+
+            When using a StorFly SSD, raw data that is being pulled from the disk may not be read properly by the smartd daemon. This could
+            cause the above messages to be written to the syslog every 30 minutes.
+
+            However, if the value of Offline uncorrectable sectors (in the above example logs: value = 2) is constant and not incrementing,
+            the logs are harmless and do not indicate SSD issues.
+
+            Solution:
+
+The level of these messages is INFO and DEBUG. They are intended for debugging purposes. Therefore, the messages may indicate a
+            possible failure of the SSD.
+
+            To get a summary of the health status of the disk, the smartctl command from the shell can be used. All SSD information can be
+            viewed, including detailed output of all parameters. Below is an output example of this command which displays information for a
+            StorFly SSD:
+             
+
+            root@ds-fmb-dc-1> start shell
+            ​root@ds-fmb-dc-1: /var/home/remote # smartctl -a /dev/ada0
+            ​smar@ctl 6.4 2015-06-04 r4109 [Fre BSD JNPR-10.3-20160927.337663_build amd64] Junos Build
+            ​Copyright (C) 2002-15, Bruce Allen, Christian Franke, www.smartmontools.org
+
+            === START OF INFORMATION SECTION ===
+            Device Model:     StorFly - VSFA18PI032G-1A0
+            Serial Number:    P1T05003961506020199
+            Firmware Version: 0605-1A0
+            User Capacity:    29,880,221,696 bytes [29.8 GB]
+            Sector Size:      512 bytes logical/physical
+            Rotation Rate:    Solid State Device
+            Device is:        Not in smartctl database [for details use: -P showall]
+            ATA Version is:   ACS-2 (minor revision not indicated)
+            Local Time is:    Tue Feb 21 15:08:35 2017 CET
+            SMART support is: Available - device has SMART capability.
+            SMART support is: Enabled
+            AAM feature is:   Unavailable
+            APM feature is:   Unavailable
+            Rd look-ahead is: Unavailable
+            Write cache is:   Enabled
+            ATA Security is:  Disabled, frozen [SEC2]
+            Wt Cache Reorder: Unavailable
+
+            === START OF READ SMART DATA SECTION ===
+            SMART overall-health self-assessment test result: PASSED
+
+            General SMART Values:
+            Offline data collection status:  (0x02) Offline data collection activity
+                                                    was completed without error.
+                                                    Auto Offline Data Collection: Disabled.
+            Self-test execution status:      (   0) The previous self-test routine completed
+                                                    without error or no self-test has ever
+                                                    been run.
+            Total time to complete Offline
+            data collection:                (    0) seconds.
+            Offline data collection
+            capabilities:                    (0x15) SMART execute Offline immediate.
+                                                    No Auto Offline data collection support.
+                                                    Abort Offline collection upon new
+                                                    command.
+                                                    No Offline surface scan supported.
+                                                    Self-test supported.
+                                                    No Conveyance Self-test supported.
+                                                    No Selective Self-test supported.
+            SMART capabilities:            (0x0002) Does not save SMART data before
+                                                    entering power-saving mode.
+                                                    Supports SMART auto save timer.
+            Error logging capability:        (0x01) Error logging supported.
+                                                    General Purpose Logging supported.
+            Short self-test routine
+            recommended polling time:        (   1) minutes.
+            Extended self-test routine
+            recommended polling time:        (   1) minutes.
+
+            SMART Attributes Data Structure revision number: 1
+            Vendor Specific SMART Attributes with Thresholds:
+            ID# ATTRIBUTE_NAME          FLAGS    VALUE WORST THRESH FAIL RAW_VALUE
+              1 Raw_Read_Error_Rate     ------   100   100   000    -    0
+              5 Reallocated_Sector_Ct   ------   100   100   000    -    0
+              9 Power_On_Hours          ------   100   100   000    -    4658
+             12 Power_Cycle_Count       ------   100   100   000    -    24
+            160 Unknown_Attribute       ------   100   100   000    -    4
+            161 Unknown_Attribute       ------   100   100   000    -    232
+            163 Unknown_Attribute       ------   100   100   000    -    38
+            164 Unknown_Attribute       ------   100   100   000    -    10556
+            165 Unknown_Attribute       ------   100   100   050    -    20
+            166 Unknown_Attribute       ------   100   100   050    -    0
+            167 Unknown_Attribute       ------   100   100   001    -    5
+            192 Power-Off_Retract_Count ------   100   100   000    -    0
+            194 Temperature_Celsius     ------   100   100   000    -    27
+            195 Hardware_ECC_Recovered  ------   100   100   000    -    0
+            196 Reallocated_Event_Count ------   100   100   016    -    0
+            198 Offline_Uncorrectable   ------   100   100   050    -    2
+            199 UDMA_CRC_Error_Count    ------   100   100   050    -    0
+            241 Total_LBAs_Written      ------   100   100   000    -    4058
+            242 Total_LBAs_Read         ------   100   100   000    -    829
+            243 Unknown_Attribute       ------   000   000   000    -    0
+            244 Unknown_Attribute       ------   000   000   000    -    0
+
+
+            From the example output, it is easily observed that the SMART overall-health self-assessment test has been PASSED. This basic
+            overall health test has only two results: PASSED or FAILED. If the test result is FAILED, this indicates that the SMART system
+            believes the drive to be in imminent danger of failure, so it is imperative that all important data should be backed up.
+
+            Furthermore, the most important attributes to check for disk health, as highlighted in the output example above are:
+
+              ○ Attribute #5 (Reallocated_Sector_Ct): This is a critical parameter. It shows the count of reallocated sectors. When a drive
+                finds a read error, it marks that sector as "reallocated" and data is transferred to a spare area. The RAW_VALUE represents
+                a count of the bad sectors that have been found and remapped. The higher the attribute value, the more sectors the drive has
+                had to reallocate. A drive with bad sectors can continue to operate. However, a drive which has had any reallocation is
+                prone to failure. If this value is 0, the SDD is healthy. If this value is different than 0, urgent data backup and hardware
+                replacement is recommended.
+
+            In the example output provided, Reallocated_Sector_Ct has RAW_VALUE = 0, meaning that the drive is OK.
+
+              ○ Attribute #198 (Offline_Uncorrectable): This value indicates that there have been two errors while reading a sector, but
+                self-adjustments were made such that data could be eventually retrieved. If the value of this attribute is continuously
+                incrementing in the logs, this indicates defects of the disk surface.
+
+            It can be seen from the example logs that this value is constant, meaning that the drive is OK. This parameter is permanent and
+            cannot be reset, however. It can only increment when another read error happens.
+
+              ○ Attribute #161 (Spares Count) and Attribute #167 (Erase Count) - These attributes can be checked additionally to confirm SSD
+                health. A failing SSD should have Attribute #161 below the value of 10 and Attribute #167 above the value of 100000.
+
+            Example output shows these attributes to be within limits, meaning that the drive is OK.
+
+            Solutions:
+
+             1. If SSD has PASSED the self-assessment test and if above attributes have been verified and Offline_Uncorrectable value is not
+                incrementing in the logs, SSD is healthy and logs can be ignored.
+
+                The "Device: /dev/ada0, <value> Offline uncorrectable sectors" message can be ignored if its frequency is once every 30
+                minutes for a low (single digit) number of sectors. The repeating message for the same value of uncorrectable sectors has
+                been proven to be a product limitation for the MX960 and EX9200 platforms and cannot be suppressed.
+
+                Releases 15.1R7, 16.1R5, 16.2R2 and 17.1R2 have improved logging of these messages: if the Offline_Uncorrectable value is
+                non-zero and not incrementing, the log messages are printed every 3 hours.
+
+                It is not recommended to filter these entries from being written to the syslog messages file.  If a change in the
+                Offline_Uncorrectable value would happen, indicating an issue with the SSD, it could be missed completely.​ The disk might
+                fail and it would have to be replaced eventually.
+
+ 2. If logs are showing a high count of Offline_Uncorrectable sectors (higher than single digit), and if after checking the disk
+                attributes Reallocated_Sector_Ct is not 0, urgent data backup and hardware replacement is recommended for the SSD.
+
+https://kb.juniper.net/InfoCenter/index?page=content&id=KB31515&actp=RSS
+
+##################################################################################################################
+Как избавиться от нечитаемых секторов на диске                                      [исправить]
+В логе smartd появились подобные свидетельства наличия нечитаемых секторов на диске:
+
+   smartd[798]: Device: /dev/ad5, 15 Currently unreadable (pending) sectors
+   smartd[798]: Device: /dev/ad5, 15 Offline uncorrectable sectors
+
+SMART тестирование подтвердило подозрения:
+
+   Запускаем фоновый тест диска, не мешающий основной работе:
+      smartctl -t long /dev/ad5
+   Ждем завершения периодически просматривая статус:
+      smartctl -l selftest /dev/ad5
+   В итоге смотрим содержимое лога, в самом конце вывода:
+      smartctl -a /dev/ad5
+   Имеем:
+   # 1  Extended offline  Completed: read failure  90% 2916 10373954
+
+Выявляем полный список сбойных секторов, путем чтения всех данных с диска:
+
+   dd if=/dev/ad5 of=/dev/null bs=512 conv=noerror,sync
+
+В один прекрасный момент появятся надписи вида:
+
+   dd: /dev/ad5: Input/output error
+   10373954+0 records in
+   10373954+0 records out
+   5311464448 bytes transferred in 2427.397393 secs (2188131 bytes/sec)
+
+В системном логе увидим:
+
+   kernel: ad5: TIMEOUT - READ_DMA retrying (1 retry left)  LBA=10373954
+   kernel: ad5: TIMEOUT - READ_DMA retrying (0 retries left) LBA=10373954
+   ....
+   kernel: ad5: FAILURE - READ_DMA timed out LBA=10374109
+   kernel: ad5: TIMEOUT - READ_DMA retrying (1 retry left) LBA=10374113
+
+Проверяем, каждый участок еще раз:
+
+   dd if=/dev/ad5 of=/dev/null bs=512 count=1 skip=10373954 conv=noerror,sync
+
+Смотрим какой файл в ФС подпадает под этот блок.
+
+Смотрим и примерно вычисляем номер раздела на который приходится сбойный сектор (LBA 10373954):
+
+   fdisk -s /dev/ad5
+
+   /dev/ad5: 775221 cyl 16 hd 63 sec
+   Part        Start        Size Type Flags
+   1:          63   398444067 0xa5 0x80
+   2:   398444130   382973535 0xa5 0x80
+
+10373954 - 63 = 10373891
+
+   disklabel /dev/ad5s1
+
+   # /dev/ad5s1:
+   8 partitions:
+   #        size   offset    fstype   [fsize bsize bps/cpg]
+     a:  2097152        0    4.2BSD     2048 16384 28552
+     b:  4194304  2097152      swap
+     c: 398444067        0    unused    0  0 # "raw" part
+     d:  2097152  6291456    4.2BSD     2048 16384 28552
+     e: 10485760  8388608    4.2BSD     2048 16384 28552
+     f: 104857600 18874368    4.2BSD     2048 16384 28552
+     g: 104857600 123731968    4.2BSD     2048 16384 28552
+     h: 162127234 228589568    4.2BSD     2048 16384 28552
+
+Видим, что 10373891 приходится на раздел /dev/ad5s1e
+Расчитываем смещение относительно начала раздела:
+10373891 - 8388608 = 1985283
+
+Находим иноду, которой принадлежит заданный блок:
+   fsdb -r /dev/ad5s1e
+   findblk 1985283
+
+повторяем для каждого сбойного сектора
+(для Linux нужно использовать debugfs - http://smartmontools.sourceforge.net/BadBlockHowTo.txt)
+
+Пытаемся записать данные в сбойный сектор, чтобы инициировать процесс
+ремапинга на диске.
+
+    sysctl kern.geom.debugflags=16 # иначе будет dd: /dev/ad5: Operation not permitted)
+    dd if=/dev/zero of=/dev/ad5 bs=512 count=1 skip=10373954 conv=noerror,sync
+    sysctl kern.geom.debugflags=0
+
+Если после записи сектор начал читаться - все ok,
+
+если нет - резервная область на диске уже заполнена, пробуем запретить
+обращещние окружающих секторов в ФС:
+
+   man badsect
+
+  /dev/ad5s1e примонтирован как /usr, создаем директорию /usr/BAD и выполняем
+  badsect /usr/BAD 1985283
+  fsck -y /dev/ad5s1e
+
+Полезные порты:
+   /usr/ports/sysutils/recoverdm
+   /usr/ports/sysutils/diskcheckd
+
+https://www.opennet.ru/tips/1720_disk_bad_sector_ufs_freebsd.shtml
+
