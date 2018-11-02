@@ -14,6 +14,3 @@ xserver-xorg-core xinit
 # echo "exec fluxbox" > ~/.xinitrc
 # startx
 
-# suckless dwm
-apt-get install libx11-dev libxft-dev libxinerama-dev
-
