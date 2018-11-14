@@ -1,4 +1,4 @@
-pkg install ncurses bash vim-console xf86-video-intel
+pkg install ncurses bash vim-console:
 # pkg install dwm dmenu sterm
 
 echo "export LANG=en_US.UTF-8" >> .xinitrc
