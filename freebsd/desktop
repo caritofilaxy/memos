@@ -1,4 +1,6 @@
-pkg install xorg
+pkg install ncurses bash vim-console:
+# pkg install dwm dmenu sterm
+
 echo "export LANG=en_US.UTF-8" >> .xinitrc
 echo "setxkbmap -layout us, ru -option grp:caps_toggle >> .xinitrc
 exec wm
