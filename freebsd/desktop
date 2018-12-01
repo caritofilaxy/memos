@@ -1,6 +1,1 @@
-pkg install ncurses bash vim-console xf86-video-intel
-# pkg install dwm dmenu sterm
-
-echo "export LANG=en_US.UTF-8" >> .xinitrc
-echo "setxkbmap -layout us, ru -option grp:caps_toggle >> .xinitrc
-exec wm
+https://cooltrainer.org/a-freebsd-desktop-howto/
