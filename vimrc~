@@ -9,17 +9,10 @@ set autoindent
 syntax off
 nohlsearch
 
-" delays
-" mapping
-set timeoutlen=250
-" keycode
-set ttimeoulen=0
-
 " swap : and ;
 " nnoremap ; :
 " nnoremap : ;
 imap jj <ESC>
-nmap 33 i#<ESC>
 
 " highlight 80th column where string exceed it
 highlight ColorColumn ctermbg=magenta
@@ -37,5 +30,3 @@ autocmd BufNewFile  *.pl      0r ~/.vim/templates/pl.template
 autocmd BufNewFile  *.html    0r ~/.vim/templates/html.template
 
 set backup
-
-
