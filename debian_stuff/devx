@@ -1,0 +1,21 @@
+
+# xorg and stuff
+apt-get -y install xserver-xorg-video-dummy xserver-xorg-input-void xserver-xorg-core xinit xserver-xorg-video-intel xserver-xorg-input-mouse xserver-xorg-input-evdev xserver-xorg-input-kbd xserver-xorg-input-synaptics xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable libgl1-mesa-dri mesa-utils
+
+apt-get -y install git
+# ca-certificates should be installed as dep
+
+# suckless 
+apt-get install libx11-dev libxft-dev libxinerama-dev 
+mkdir -p ~/git/suckless.org
+cd ~/git/suckless.org
+git clone https://git.suckless.org/dwm
+git clone https://git.suckless.org/dmenu
+git clone https://git.suckless.org/st
+
+# need apt-get some deps, clarify later
+git clone https://git.suckless.org/surf
+
+# do make install in each of dirs
+
+
