@@ -1,0 +1,14 @@
+c - create
+x - extract
+r - append (no compression only)
+
+C - change directory before adding or extracting
+f - file to tar 
+p - permissions restore
+v - verbose
+
+
+tar cfJv name.tcxz /some/long/path - if im in home and do xf it will extract tar into /home/me/some/long/path
+
+tar cfJvC name.txz /some/long/path . - if im in home and do xf it will extract tar into /home/me/
+
