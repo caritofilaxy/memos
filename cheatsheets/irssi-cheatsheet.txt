@@ -15,7 +15,13 @@ to properly scroll in tmux set 'alias irssi='TERM=screen-256color'' in .bashrc
 
 # create command alias
 /alias wg window goto
-
+##################################
+there are trailing undescore in nicknames sometimes appear
+that happened because of:
+1) such nick already used 
+2) connection stalled and after relogin server "thinks" you are still connected.
+in second case do /msg nickserv ghost yournick and /nick yournick
+or /msg nickserv regain yournick (e.g. freenode)
 
 ####################################
 sample config
