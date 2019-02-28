@@ -1,0 +1,6 @@
+console:
+kbdconrol -r delay.reepeat | speed (man kbdcontrol)
+
+xorg:
+xset r rate delay speed
+xset r rate 200 200
