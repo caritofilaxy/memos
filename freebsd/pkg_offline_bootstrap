@@ -4,6 +4,8 @@ usr/local/sbin/pkg-static add pkg-ver-sion
 
 # usb stick using
 pkg add usb_modeswitch-ver-sion.tar.xz
+pkg add usbhid-dump-ver-sion.tar.xz
+pkg add usbids-ver-sion.tar.xz
 rehash # if tcsh
 usb_modeswitch -p 12d1 -v 1f01 -P 12d1 -V 14dc -J
 dhclient ue0
