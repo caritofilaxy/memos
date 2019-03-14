@@ -1,1 +1,7 @@
-https://cooltrainer.org/a-freebsd-desktop-howto/
+pkg install xorg xf86-video-intel dwm dmenu sterm
+
+xorg cyrillic:
+echo "setxkbmap -layout us,ru -option grp:caps_toggle" > .xinitrc
+echo "exec /usr/local/bin/dwm" >> .xinitrc
+
++ setenv LANG en_US.UTF-8 >> .cshrc
